@@ -1,0 +1,10 @@
+{
+	"editor.codeActionsOnSave": {
+		"source.fixAll.eslint": "explicit"
+	},
+	"editor.tabSize": 4,
+	"editor.rulers": [100],
+	"editor.formatOnSave": true, // Tell VSCode to format files on save
+	"eslint.validate": ["javascript", "javascriptreact", "svelte"],
+	"window.title": "Nyelvtannáci"
+}
