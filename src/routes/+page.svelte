@@ -1,9 +1,9 @@
 <script lang="ts">
-	import scrapeMTA from '$lib/api/scrapeMTA';
+	import testScraper from '$lib/api/testScraper';
 
 	async function testHelyesEIgy() {
 		const start = performance.now();
-		const results = await scrapeMTA('helyesEIgy', 'kora');
+		const results = await testScraper('helyesEIgy', 'kora');
 		const end = performance.now();
 		console.debug(results);
 		console.debug(`Time taken: ${end - start} milliseconds`);
@@ -11,7 +11,7 @@
 
 	async function testKulonVagyEgybe() {
 		const start = performance.now();
-		const results = await scrapeMTA('kulonVagyEgybe', 'tartósító szer mentes');
+		const results = await testScraper('kulonVagyEgybe', 'tartósító szer mentes');
 		const end = performance.now();
 		console.debug(results);
 		console.debug(`Time taken: ${end - start} milliseconds`);
@@ -19,7 +19,7 @@
 
 	async function testElvalasztas() {
 		const start = performance.now();
-		const results = await scrapeMTA('elvalasztas', 'elválasztás');
+		const results = await testScraper('elvalasztas', 'elválasztás');
 		const end = performance.now();
 		console.debug(results);
 		console.debug(`Time taken: ${end - start} milliseconds`);
