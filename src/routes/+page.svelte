@@ -1,4 +1,5 @@
 <script lang="ts">
+	import testChecker from '$lib/api/testChecker';
 	import testScraper from '$lib/api/testScraper';
 
 	async function testHelyesEIgy() {
@@ -24,6 +25,16 @@
 		console.debug(results);
 		console.debug(`Time taken: ${end - start} milliseconds`);
 	}
+
+	async function _testChecker() {
+		const start = performance.now();
+		// const results = await testChecker('Ez egy példa mondat!');
+		const results = await testChecker('Ez egy példa mondat.');
+		const end = performance.now();
+		console.debug(results);
+		console.debug(results.resultParts.map((part) => part.text).join(' '));
+		console.debug(`Time taken: ${end - start} milliseconds`);
+	}
 </script>
 
 <h1>Welcome to SvelteKit</h1>
@@ -31,4 +42,5 @@
 
 <button on:click={testHelyesEIgy}>test helyesEIgy</button><br />
 <button on:click={testKulonVagyEgybe}>test kulonVagyEgybe</button><br />
-<button on:click={testElvalasztas}>test elvalasztas</button>
+<button on:click={testElvalasztas}>test elvalasztas</button><br />
+<button on:click={_testChecker}>test checker</button>
