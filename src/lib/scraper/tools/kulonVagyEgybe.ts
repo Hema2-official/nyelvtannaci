@@ -65,9 +65,10 @@ function parseKulonVagyEgybe(doc: HTMLElement): KulonVagyEgybeResult[] {
 			const steps: ExplanationStep[] = [];
 			for (const step of explanationNode.querySelectorAll('.step_body')) {
 				const action = step.textContent
-					?.trim()
-					.substring(0, step.textContent.lastIndexOf('['))
-					.replace(/\n/g, ' ');
+					?.substring(0, step.textContent.lastIndexOf('['))
+					.replace(/\n/g, ' ')
+					.replace(/ {2,}/g, ' ') // remove multiple spaces between words
+					.trim();
 				if (!action) continue;
 
 				const references: Record<string, string> = {};
