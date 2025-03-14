@@ -1,58 +1,41 @@
-import scrapeMTA from '$lib/scraper/scrapeMTA';
+import { elvalasztasFunction } from '$lib/scraper-new/elvalasztas';
+import { helyesEIgyFunction } from '$lib/scraper-new/helyesEIgy';
+import { kulonVagyEgybeFunction } from '$lib/scraper-new/kulonVagyEgybe';
+import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
 import { z } from 'zod';
 
-const kulonVagyEgybeParams = z.object({
-	input: z.string().describe('Kérdéses szavak szóközzel elválasztva')
-});
+export type LLMFunction<Params extends z.ZodType, ToolResult> = {
+	name: string;
+	description: string;
+	parameters: Params;
+	callback: (args: z.infer<Params>) => Promise<ToolResult>;
+	summarize?: (args: z.infer<Params>, result: ToolResult) => IntermediateSummary[];
+};
 
-const helyesEIgyParams = z.object({
-	input: z.string().describe('Ellenőrizendő szó')
-});
+export const availableFunctions = [kulonVagyEgybeFunction, helyesEIgyFunction, elvalasztasFunction];
 
-const elvalasztasParams = z.object({
-	input: z.string().describe('Elválasztandó szó vagy szavak')
-});
-
-export const availableFunctions = [
-	{
-		name: 'kulon_vagy_egybe',
-		description:
-			'A megadott szavak vizsgálata és javaslattétel arra, hogy hogyan lehet őket leírni (külön, egybe vagy kötőjellel).',
-		parameters: kulonVagyEgybeParams,
-		callback: async (args: z.infer<typeof kulonVagyEgybeParams>) =>
-			await scrapeMTA('kulonVagyEgybe', args.input)
-	},
-	{
-		name: 'helyes-e_igy',
-		description:
-			'Szóalak helyességének vizsgálata (pl. mássalhangzó-, magánhangzó-hosszúság, ly/j használata), helytelen alakhoz helyes alakok javaslata.',
-		parameters: helyesEIgyParams,
-		callback: async (args: z.infer<typeof helyesEIgyParams>) =>
-			await scrapeMTA('helyesEIgy', args.input)
-	},
-	{
-		name: 'elvalasztas',
-		description: 'Szavak elválasztása a magyar helyesírás szabályai szerint.',
-		parameters: elvalasztasParams,
-		callback: async (args: z.infer<typeof elvalasztasParams>) =>
-			await scrapeMTA('elvalasztas', args.input)
-	}
-];
-
-const resultPart = z.object({
+const resultPartType = z.object({
 	text: z.string(),
 	type: z
 		.enum(['original', 'corrected', 'added', 'removed'])
-		.describe('What this piece of text is'),
+		.describe(
+			"Original, if this part hasn't been modified and is a straight quote from the input. Corrected, added, and removed are self-explanatory."
+		),
 	explanation: z
 		.string()
-		.describe('Explanation for the actions taken to correct this part (can be empty)'),
+		.describe(
+			'Explanation for the actions taken to correct this part (can be empty). If the part is original, this should be empty.'
+		),
 	references: z.array(z.string()).describe('Corresponding references, if any')
 });
 
 export const resultType = z.object({
 	error: z.string().describe('Error message if correction failed, empty otherwise'),
-	resultParts: z.array(resultPart).describe('The corrected text represented in parts')
+	resultParts: z
+		.array(resultPartType)
+		.describe(
+			'The corrected text in split form, with the immediately joined form of these parts being the corrected text in its entirety.'
+		)
 });
 
 export type Result = z.infer<typeof resultType>;
@@ -73,10 +56,11 @@ export const developerPrompt = [
 	[
 		'Steps',
 		`1. Extract as many parts of the text as you can to be checked with the tools. For example:
-            - Disassemble compound words (e.g. "ablakpárkány" -> "ablak", "párkány")
-            - Find separated words that could be in a compound. A good trick is to check if two words closely complement each other's meaning. Or just check neighboring words.
-            - Remove affixes, check words that way too (e.g. "előadásokban" -> "előadás")
-            - Expand lists of same-suffix compounds (e.g. "színanyag és vitamintartalom" -> "színanyag" + "tartalom", "vitamin" + "tartalom")
+            - Disassemble compound words (e.g. "ablakpárkány" -> "ablak", "párkány");
+            - Find separated words that could be in a compound. A good trick is to check if two words closely complement each other's meaning. Or just check neighboring words;
+            - Remove affixes, check words that way too (e.g. "előadásokban" -> "előadás");
+            - Expand lists of same-suffix compounds (e.g. "színanyag- és vitamintartalom" -> "színanyag" + "tartalom", "vitamin" + "tartalom");
+			- Expand every other list to check for missing compound forms;
             - ... and more.
          2. Use the appropriate tools for checking parts of the text.
 		 3. Rinse and repeat as you see fit.
@@ -106,16 +90,46 @@ export const developerPrompt = [
 		- kulon_vagy_egybe: "parabén mentes" -> "parabénmentes"
 		- kulon_vagy_egybe: "szilikon mentes" -> "szilikonmentes"
 		Result: "Mesterségesszínezék-, parabén- és szilikonmentes!"
+		Parts:
+		- "Mesterségesszínezék-": corrected
+		- ", ": original
+		- "parabén-": corrected
+		- " és ": original
+		- "szilikonmentes": corrected
+		- "!": original
 
 		Input: "testre szabás" or "testreszabás"
 		Tool usage:
-		- kulon_vagy_egybe: "testre szabás"
+		- kulon_vagy_egybe: "testre szabás" -> "testreszabás"
 		Result: "testreszabás"
+		Parts:
+		- "testreszabás": corrected (if input was "testre szabás", otherwise original)
 
 		Input: "testreszabott" or "testre szabott"
 		Tool usage:
 		- kulon_vagy_egybe: "testre szabott" -> "testre szabott"
 		Result: "testre szabott"
+		Parts:
+		- "testre szabott": corrected (if input was "testreszabott", otherwise original)
+
+		Input: "Részt veszek informatikai, irodalom és matekversenyeken"
+		Tool usage:
+		- kulon_vagy_egybe: "informatikai verseny" -> "informatikai verseny"
+		- kulon_vagy_egybe: "irodalom verseny" -> "irodalomverseny"
+		- kulon_vagy_egybe: "matek verseny" -> "matekverseny"
+		Result: "Részt veszek informatikai, irodalom- és matekversenyeken."
+		Parts:
+		- "Részt veszek informatikai, ": original
+		- "irodalom-": corrected
+		- " és matekversenyeken": original
+		- ".": corrected
+
+		Input: "tely"
+		Tool usage:
+		- helyes-e_igy: "tely" -> "tej"
+		Result: "tej"
+		Parts:
+		- "tej": corrected
 		`
 	]
 ]

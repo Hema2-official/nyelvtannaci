@@ -1,6 +1,14 @@
-import type { HTMLElement } from 'node-html-parser';
-import type { Tool } from '../scraper.type';
+import { parse, type HTMLElement } from 'node-html-parser';
+import { MTA_BASE_URL } from '$env/static/private';
+import scraperAxios from './scraperAxios';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
+import { z } from 'zod';
+import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { LLMFunction } from '$lib/llm/promptConfig';
+
+export const helyesEIgyParams = z.object({
+	input: z.string().describe('Ellenőrizendő szó')
+});
 
 export type HelyesEIgyResult = {
 	expression: string;
@@ -9,7 +17,25 @@ export type HelyesEIgyResult = {
 	tips: string[];
 };
 
-function parseHelyesEIgy(doc: HTMLElement): HelyesEIgyResult[] {
+function generateUrl(input: string) {
+	return scraperAxios.getUri({
+		url: `${MTA_BASE_URL}/helyesiras/default/suggest`,
+		params: { q: input.trim() }
+	});
+}
+
+export async function scrapeHelyesEIgy(
+	args: z.infer<typeof helyesEIgyParams>
+): Promise<HelyesEIgyResult[]> {
+	const { input } = args;
+
+	if (!input) throw 'Input is required';
+	if (!input || /[<>'"/\\]/.test(input)) throw 'Invalid input';
+
+	const response = await scraperAxios.get<string>(generateUrl(input));
+
+	const doc = parse(response.data);
+
 	// error cases:
 	//  - result node has attribute "unknown"
 	// results:
@@ -56,7 +82,22 @@ function parseHelyesEIgy(doc: HTMLElement): HelyesEIgyResult[] {
 	return results;
 }
 
-export default {
-	url: '/helyesiras/default/suggest',
-	parse: parseHelyesEIgy
-} as Tool<HelyesEIgyResult[]>;
+function provideSummary(
+	args: z.infer<typeof helyesEIgyParams>,
+	results: HelyesEIgyResult[]
+): IntermediateSummary[] {
+	return results.map((result) => ({
+		expression: result.expression,
+		correct: result.correct,
+		shareLink: generateUrl(args.input)
+	}));
+}
+
+export const helyesEIgyFunction: LLMFunction<typeof helyesEIgyParams, HelyesEIgyResult[]> = {
+	name: 'helyes-e_igy',
+	description:
+		'Szóalak helyességének vizsgálata (pl. mássalhangzó-, magánhangzó-hosszúság, ly/j használata), helytelen alakhoz helyes alakok javaslata.',
+	parameters: helyesEIgyParams,
+	callback: scrapeHelyesEIgy,
+	summarize: provideSummary
+};

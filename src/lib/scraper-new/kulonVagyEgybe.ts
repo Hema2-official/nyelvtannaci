@@ -1,6 +1,13 @@
-import type { HTMLElement } from 'node-html-parser';
-import type { Tool } from '../scraper.type';
+import { parse } from 'node-html-parser';
 import { MTA_BASE_URL } from '$env/static/private';
+import scraperAxios from './scraperAxios';
+import { z } from 'zod';
+import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { LLMFunction } from '$lib/llm/promptConfig';
+
+export const kulonVagyEgybeParams = z.object({
+	input: z.string().describe('Kérdéses szavak szóközzel elválasztva')
+});
 
 export type ExplanationStep = {
 	action: string;
@@ -15,7 +22,25 @@ export type KulonVagyEgybeResult = {
 	possibleExplanations: PossibleExplanation[];
 };
 
-function parseKulonVagyEgybe(doc: HTMLElement): KulonVagyEgybeResult[] {
+function generateUrl(input: string) {
+	return scraperAxios.getUri({
+		url: `${MTA_BASE_URL}/helyesiras/default/kulegy`,
+		params: { q: input.trim() }
+	});
+}
+
+export async function scrapeKulonVagyEgybe(
+	args: z.infer<typeof kulonVagyEgybeParams>
+): Promise<KulonVagyEgybeResult[]> {
+	const { input } = args;
+
+	if (!input) throw 'Input is required';
+	if (!input || /[<>'"/\\]/.test(input)) throw 'Invalid input';
+
+	const response = await scraperAxios.get<string>(generateUrl(input));
+
+	const doc = parse(response.data);
+
 	// error cases:
 	//  - contains .result.error
 	//  - contains .result.result-noresult
@@ -87,7 +112,29 @@ function parseKulonVagyEgybe(doc: HTMLElement): KulonVagyEgybeResult[] {
 	return results;
 }
 
-export default {
-	url: '/helyesiras/default/kulegy',
-	parse: parseKulonVagyEgybe
-} as Tool<KulonVagyEgybeResult[]>;
+function provideSummary(
+	args: z.infer<typeof kulonVagyEgybeParams>,
+	results: KulonVagyEgybeResult[]
+): IntermediateSummary[] {
+	return results.map((result) => ({
+		expression: result.solution,
+		correct: true,
+		explanation:
+			result.possibleExplanations.length !== 1
+				? undefined
+				: result.possibleExplanations[0].steps.map((step) => step.action).join('\n'),
+		shareLink: generateUrl(args.input)
+	}));
+}
+
+export const kulonVagyEgybeFunction: LLMFunction<
+	typeof kulonVagyEgybeParams,
+	KulonVagyEgybeResult[]
+> = {
+	name: 'kulon_vagy_egybe',
+	description:
+		'A megadott szavak vizsgálata és javaslattétel arra, hogy hogyan lehet őket leírni (külön, egybe vagy kötőjellel).',
+	parameters: kulonVagyEgybeParams,
+	callback: scrapeKulonVagyEgybe,
+	summarize: provideSummary
+};
