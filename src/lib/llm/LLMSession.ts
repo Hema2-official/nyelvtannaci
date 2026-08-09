@@ -1,17 +1,10 @@
-import OpenAI from 'openai';
 import { z, type ZodType } from 'zod';
-import { zodFunction } from 'openai/helpers/zod';
 import { randomUUID, type UUID } from 'node:crypto';
-import { OPENAI_API_KEY, OPENAI_MODEL, SESSION_MESSAGE_LIMIT } from '$env/static/private';
 import type { ChatCompletionMessageParam } from 'openai/resources/index.mjs';
 import type { LLMFunction } from './promptConfig';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
-
-const messageLimit = Number.parseInt(SESSION_MESSAGE_LIMIT ?? '100');
-
-const openai = new OpenAI({
-	apiKey: OPENAI_API_KEY
-});
+import getProvider from './provider';
+import { toChatCompletionTool } from './toolSchema';
 
 class LLMSession<ResultType extends ZodType> {
 	readonly id: UUID;
@@ -29,10 +22,7 @@ class LLMSession<ResultType extends ZodType> {
 	constructor(developerPrompt: string, resultType: ResultType) {
 		this.id = randomUUID();
 		this.resultType = resultType;
-		this.messages.push({
-			role: 'developer',
-			content: developerPrompt
-		});
+		this.messages.push({ role: getProvider().systemRole, content: developerPrompt });
 	}
 
 	addMessage(message: ChatCompletionMessageParam) {
@@ -49,6 +39,8 @@ class LLMSession<ResultType extends ZodType> {
 	}
 
 	async getResult() {
+		const { client, model, strictTools, messageLimit } = getProvider();
+
 		// Register the 'return_result' function
 		this.registerFunction({
 			name: 'return_result',
@@ -57,38 +49,43 @@ class LLMSession<ResultType extends ZodType> {
 			callback: (args: z.infer<ResultType>) => (this.result = args)
 		});
 
-		// Assemble the tools to be understood by OpenAI
-		const tools = this.functions.map((f) =>
-			zodFunction({
-				name: f.name,
-				parameters: f.parameters,
-				description: f.description
-			})
-		);
+		// Assemble the tools in the dialect the provider understands
+		const tools = this.functions.map((f) => toChatCompletionTool(f, strictTools));
 
 		// Loop until the result is set by the LLM through 'return_result'
 		while (!this.result && this.messages.length < messageLimit) {
-			const completion = await openai.chat.completions.create({
+			const completion = await client.chat.completions.create({
 				messages: this.messages,
-				model: OPENAI_MODEL,
+				model: model,
 				tools: tools,
-				n: 1,
 				stream: false
 			});
 
-			this.addMessage(completion.choices[0].message);
+			// OpenAI-compatible gateways sometimes report failures in the body of a 200
+			const error = (completion as { error?: { message?: string } }).error;
+			if (error) throw new Error(error.message ?? 'The provider returned an error');
+
+			const message = completion.choices?.[0]?.message;
+			if (!message) throw new Error('The provider returned no completion choices');
+
+			this.addMessage(message);
 
 			// Loop through tool calls and execute them
-			for (const toolCall of completion.choices[0].message.tool_calls ?? []) {
-				if (toolCall.type !== 'function') throw new Error('Unexpected tool call type');
+			for (const toolCall of message.tool_calls ?? []) {
+				// Some gateways omit the (currently only) type discriminator
+				if (toolCall.type && toolCall.type !== 'function')
+					throw new Error('Unexpected tool call type');
 
 				const llmFunction = this.functions.find((f) => f.name === toolCall.function.name);
 				if (!llmFunction) throw new Error('Misconfigured tool: ' + toolCall.function.name);
 
 				let output: string;
 				try {
-					// Parse zod arguments (can throw LLM-friendly error messages)
-					const args = llmFunction.parameters.parse(JSON.parse(toolCall.function.arguments));
+					// Parse zod arguments (can throw LLM-friendly error messages).
+					// Parameterless calls may come back as an empty string instead of '{}'.
+					const args = llmFunction.parameters.parse(
+						JSON.parse(toolCall.function.arguments || '{}')
+					);
 
 					// Execute the tool (this should do so similarly)
 					const results = await llmFunction.callback(args);
@@ -119,7 +116,8 @@ class LLMSession<ResultType extends ZodType> {
 			}
 		}
 
-		if (!this.result) throw new Error('No result returned from LLM');
+		if (!this.result)
+			throw new Error(`No result returned from LLM within ${messageLimit} messages`);
 
 		return this.result;
 	}
