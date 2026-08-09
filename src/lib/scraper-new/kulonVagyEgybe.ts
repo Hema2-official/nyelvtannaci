@@ -34,8 +34,8 @@ export async function scrapeKulonVagyEgybe(
 ): Promise<KulonVagyEgybeResult[]> {
 	const { input } = args;
 
-	if (!input) throw 'Input is required';
-	if (!input || /[<>'"/\\]/.test(input)) throw 'Invalid input';
+	if (!input) throw new Error('Input is required');
+	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
 
 	const response = await scraperAxios.get<string>(generateUrl(input));
 
@@ -48,7 +48,7 @@ export async function scrapeKulonVagyEgybe(
 	const errorNode = doc.querySelector('.result.error');
 	if (errorNode) {
 		const message = errorNode.textContent?.trim();
-		if (!message) throw 'A karakterláncot sajnos nem tudtuk értelmezni.';
+		if (!message) throw new Error('A karakterláncot sajnos nem tudtuk értelmezni.');
 		throw message
 			.substring(message.indexOf('\n') + 1)
 			.replace(/\s+/g, ' ')
@@ -57,7 +57,9 @@ export async function scrapeKulonVagyEgybe(
 
 	if (doc.querySelector('.result.result-noresult'))
 		// part of the official error message
-		throw 'A megadott bemenetre automatikus eszközeinkkel sajnos nem tudtunk megfelelő tanáccsal szolgálni.';
+		throw new Error(
+			'A megadott bemenetre automatikus eszközeinkkel sajnos nem tudtunk megfelelő tanáccsal szolgálni.'
+		);
 
 	// results:
 	//  - #result_xhtml -> .solution (multi):

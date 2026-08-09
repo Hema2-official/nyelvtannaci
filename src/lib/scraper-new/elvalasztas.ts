@@ -23,8 +23,8 @@ export async function scrapeElvalasztas(
 ): Promise<ElvalasztasResult[]> {
 	const { input } = args;
 
-	if (!input) throw 'Input is required';
-	if (!input || /[<>'"/\\]/.test(input)) throw 'Invalid input';
+	if (!input) throw new Error('Input is required');
+	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
 
 	// Execute the request
 	const response = await scraperAxios.get<string>(generateUrl(input));

@@ -98,12 +98,12 @@ class LLMSession<ResultType extends ZodType> {
 					if (llmFunction.summarize && this.intermediateCallback) {
 						try {
 							this.intermediateCallback(llmFunction.summarize(args, results));
-						} catch (error) {
+						} catch (error: unknown) {
 							// Don't let this error get to the LLM
 							console.error(error);
 						}
 					}
-				} catch (error) {
+				} catch (error: unknown) {
 					console.error(error);
 					output = JSON.stringify({
 						error: error instanceof Error ? error.message : String(error)
