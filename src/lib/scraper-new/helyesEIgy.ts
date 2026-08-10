@@ -15,6 +15,7 @@ export type HelyesEIgyResult = {
 	correct: boolean;
 	suggestions: string[];
 	tips: string[];
+	notices: string[];
 };
 
 function generateUrl(input: string) {
@@ -39,6 +40,7 @@ export async function scrapeHelyesEIgy(
 	// error cases:
 	//  - result node has attribute "unknown"
 	// results:
+	//  - div[class^="result-"] (multi, optional): notice about the input as a whole
 	//  - ul.result -> li (multi):
 	//    - textContent.split('„')[1].split('”')[0]: expression
 	//    - unknown="YES": unknown
@@ -47,6 +49,11 @@ export async function scrapeHelyesEIgy(
 
 	const resultsNode = doc.querySelector('ul.result');
 	if (!resultsNode) throw new Error('No results found');
+
+	const notices = doc
+		.querySelectorAll('div[class^="result-"]')
+		.map((node) => optimizeForLLM(node.textContent?.replace(/\s+/g, ' ').trim() ?? ''))
+		.filter(Boolean);
 
 	// get all the li elements inside the result node
 	const results: HelyesEIgyResult[] = [];
@@ -75,7 +82,7 @@ export async function scrapeHelyesEIgy(
 		const suggestions = parseLines(resultNode.querySelector('.suggest_list'));
 		const tips = parseLines(resultNode.querySelector('.suggest_tips'));
 
-		results.push({ expression, correct, suggestions, tips });
+		results.push({ expression, correct, suggestions, tips, notices });
 	}
 
 	if (results.length === 0) throw new Error('No results found: invalid elements in results list');

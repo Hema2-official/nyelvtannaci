@@ -114,17 +114,30 @@ export async function scrapeKulonVagyEgybe(
 	return results;
 }
 
+function formatExplanations(possibleExplanations: PossibleExplanation[]): string {
+	const branches = possibleExplanations
+		.map(({ help, steps }) =>
+			[help, ...steps.map((step) => step.action)].filter(Boolean).join('\n')
+		)
+		.filter(Boolean);
+
+	// several readings of the same input: show that there was a choice to make, don't hide it
+	if (branches.length > 1)
+		return branches.map((branch, i) => `${i + 1}. lehetséges elemzés:\n${branch}`).join('\n\n');
+
+	return branches[0] ?? '';
+}
+
 function provideSummary(
 	args: z.infer<typeof kulonVagyEgybeParams>,
 	results: KulonVagyEgybeResult[]
 ): IntermediateSummary[] {
 	return results.map((result) => ({
+		query: args.input.trim(),
 		expression: result.solution,
-		correct: true,
-		explanation:
-			result.possibleExplanations.length !== 1
-				? undefined
-				: result.possibleExplanations[0].steps.map((step) => step.action).join('\n'),
+		// this tool suggests a form, it never judges the one it was given: no verdict to report
+		correct: undefined,
+		explanation: formatExplanations(result.possibleExplanations) || undefined,
 		shareLink: generateUrl(args.input)
 	}));
 }

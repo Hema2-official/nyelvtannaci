@@ -55,8 +55,9 @@ function provideSummary(
 	results: ElvalasztasResult[]
 ): IntermediateSummary[] {
 	return results.map((result) => ({
+		query: args.input.trim(),
 		expression: result,
-		correct: true,
+		correct: undefined,
 		shareLink: generateUrl(args.input)
 	}));
 }
