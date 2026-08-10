@@ -64,7 +64,8 @@ function provideSummary(
 
 export const elvalasztasFunction: LLMFunction<typeof elvalasztasParams, ElvalasztasResult[]> = {
 	name: 'elvalasztas',
-	description: 'Szavak elválasztása a magyar helyesírás szabályai szerint.',
+	description:
+		'Szavak elválasztása a magyar helyesírás szabályai szerint. (A kimenetben a "-"-jel a lehetséges elválasztási határokat, a "|-"-jel az elválasztási határokat és egyben szóösszetételi határokat jelöli.)',
 	parameters: elvalasztasParams,
 	callback: scrapeElvalasztas,
 	summarize: provideSummary
