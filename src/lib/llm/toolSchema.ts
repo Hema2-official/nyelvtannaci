@@ -1,5 +1,4 @@
 import type { ZodType } from 'zod';
-import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { ChatCompletionTool } from 'openai/resources/index.mjs';
 
 type JsonSchema = Record<string, unknown>;
@@ -37,13 +36,7 @@ function normalize(node: unknown, strict: boolean): void {
 }
 
 export function toParameterSchema(parameters: ZodType, strict: boolean): JsonSchema {
-	// `$refStrategy: 'none'` inlines everything: $ref/definitions pairs are a
-	// frequent source of "invalid tool schema" errors on non-OpenAI backends.
-	const schema = zodToJsonSchema(parameters, {
-		$refStrategy: 'none',
-		target: 'jsonSchema7'
-	}) as JsonSchema;
-
+	const schema = parameters.toJSONSchema({ target: 'draft-07' }) as JsonSchema;
 	normalize(schema, strict);
 	return schema;
 }
