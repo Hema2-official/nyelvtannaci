@@ -49,7 +49,7 @@ class LLMSession<ResultType extends ZodType> {
 
 	#messages: ChatCompletionMessageParam[] = [];
 
-	#intermediateCallback: ((summary: IntermediateSummary[]) => void) | undefined;
+	#intermediateCallback: ((summary: IntermediateSummary[]) => Promise<void>) | undefined;
 
 	#resultType: ResultType;
 	#result?: z.infer<ResultType>;
@@ -75,7 +75,7 @@ class LLMSession<ResultType extends ZodType> {
 		this.#functions.push(llmFunction);
 	}
 
-	setIntermediateCallback(callback: (summary: IntermediateSummary[]) => void) {
+	setIntermediateCallback(callback: (summary: IntermediateSummary[]) => Promise<void>) {
 		this.#intermediateCallback = callback;
 	}
 
@@ -158,7 +158,7 @@ class LLMSession<ResultType extends ZodType> {
 			// Provide an intermediate summary if applicable
 			if (llmFunction.summarize && this.#intermediateCallback) {
 				try {
-					this.#intermediateCallback(llmFunction.summarize(args, results));
+					await this.#intermediateCallback(llmFunction.summarize(args, results));
 				} catch (error: unknown) {
 					// Don't let this error get to the LLM
 					console.error(error);
