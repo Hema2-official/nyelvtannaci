@@ -1,3 +1,4 @@
+import { errorMessage } from '$lib/utils/errorMessage';
 import { z, type ZodType } from 'zod';
 import { randomUUID, type UUID } from 'node:crypto';
 import type {
@@ -35,10 +36,6 @@ Every message either calls tools or calls \`${RESULT_TOOL_NAME}\`; plain text re
 function stripCodeFence(content: string) {
 	const fenced = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/.exec(content);
 	return fenced ? fenced[1] : content;
-}
-
-function describeError(error: unknown) {
-	return error instanceof Error ? error.message : String(error);
 }
 
 class LLMSession<ResultType extends ZodType> {
@@ -166,7 +163,7 @@ class LLMSession<ResultType extends ZodType> {
 			}
 		} catch (error: unknown) {
 			console.error(error);
-			output = JSON.stringify({ error: describeError(error) });
+			output = JSON.stringify({ error: errorMessage(error) });
 		}
 
 		// Tell the LLM about the result
@@ -185,7 +182,7 @@ class LLMSession<ResultType extends ZodType> {
 			console.error(error);
 			this.addMessage({
 				role: 'user',
-				content: `That answer did not match the result schema (${describeError(error)}). Send it again in the required format.`
+				content: `That answer did not match the result schema (${errorMessage(error)}). Send it again in the required format.`
 			});
 		}
 	}
