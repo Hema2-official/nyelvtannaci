@@ -4,7 +4,11 @@
 	},
 	"editor.tabSize": 4,
 	"editor.rulers": [100],
-	"editor.formatOnSave": true, // Tell VSCode to format files on save
+	"editor.formatOnSave": true,
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"[svelte]": {
+		"editor.defaultFormatter": "esbenp.prettier-vscode"
+	},
 	"eslint.validate": ["javascript", "javascriptreact", "svelte"],
 	"window.title": "Nyelvtannáci"
 }
