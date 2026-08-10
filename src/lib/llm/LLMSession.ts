@@ -45,58 +45,59 @@ class LLMSession<ResultType extends ZodType> {
 	readonly id: UUID;
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	private functions: LLMFunction<any, any>[] = [];
+	#functions: LLMFunction<any, any>[] = [];
 
-	private messages: ChatCompletionMessageParam[] = [];
+	#messages: ChatCompletionMessageParam[] = [];
 
-	private intermediateCallback: ((summary: IntermediateSummary[]) => unknown) | undefined;
+	#intermediateCallback: ((summary: IntermediateSummary[]) => void) | undefined;
 
-	private resultType: ResultType;
-	private result?: z.infer<ResultType>;
+	#resultType: ResultType;
+	#result?: z.infer<ResultType>;
 
 	constructor(instructions: string, resultType: ResultType) {
 		this.id = randomUUID();
-		this.resultType = resultType;
+		this.#resultType = resultType;
 
 		const { systemRole, structuredOutputs } = getProvider();
-		this.messages.push({
+		this.#messages.push({
 			role: systemRole,
 			content: instructions + answeringInstructions[structuredOutputs ? 'structured' : 'tool']
 		});
 	}
 
 	addMessage(message: ChatCompletionMessageParam) {
-		this.messages.push(message);
+		this.#messages.push(message);
 		console.debug(message);
 	}
 
-	registerFunction(llmFunction: (typeof this.functions)[number]) {
-		this.functions.push(llmFunction);
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	registerFunction(llmFunction: LLMFunction<any, any>) {
+		this.#functions.push(llmFunction);
 	}
 
-	setIntermediateCallback(callback: (summary: IntermediateSummary[]) => unknown) {
-		this.intermediateCallback = callback;
+	setIntermediateCallback(callback: (summary: IntermediateSummary[]) => void) {
+		this.#intermediateCallback = callback;
 	}
 
 	async getResult() {
 		const { strictTools, structuredOutputs, maxTurns } = getProvider();
 
 		// Providers that can't constrain output to a schema hand the result back through a tool.
-		if (!structuredOutputs) this.registerFunction(this.resultFunction());
+		if (!structuredOutputs) this.registerFunction(this.#resultFunction());
 
 		// Assemble the tools in the dialect the provider understands
-		const tools = this.functions.map((f) => toChatCompletionTool(f, strictTools));
-		const responseFormat = structuredOutputs ? this.responseFormat() : undefined;
+		const tools = this.#functions.map((f) => toChatCompletionTool(f, strictTools));
+		const responseFormat = structuredOutputs ? this.#responseFormat() : undefined;
 
 		// One turn is one model response: either a batch of tool calls or the final answer
-		for (let turn = 0; turn < maxTurns && this.result === undefined; turn++) {
+		for (let turn = 0; turn < maxTurns && this.#result === undefined; turn++) {
 			const message = await this.#complete(tools, responseFormat);
 			this.addMessage(message);
 
 			if (message.tool_calls?.length) {
 				await this.#runToolCalls(message.tool_calls);
 			} else if (structuredOutputs) {
-				this.acceptResult(message.content);
+				this.#acceptResult(message.content);
 			} else {
 				// The model wrote prose instead of handing back a result
 				this.addMessage({
@@ -106,10 +107,10 @@ class LLMSession<ResultType extends ZodType> {
 			}
 		}
 
-		if (this.result === undefined)
+		if (this.#result === undefined)
 			throw new Error(`No result returned from the model within ${maxTurns} turns`);
 
-		return this.result;
+		return this.#result;
 	}
 
 	async #complete(
@@ -119,7 +120,7 @@ class LLMSession<ResultType extends ZodType> {
 		const { client, model, reasoningEffort } = getProvider();
 
 		const completion = await client.chat.completions.create({
-			messages: this.messages,
+			messages: this.#messages,
 			model: model,
 			tools: tools,
 			stream: false,
@@ -141,7 +142,7 @@ class LLMSession<ResultType extends ZodType> {
 		// Some gateways omit the (currently only) type discriminator
 		if (toolCall.type && toolCall.type !== 'function') throw new Error('Unexpected tool call type');
 
-		const llmFunction = this.functions.find((f) => f.name === toolCall.function.name);
+		const llmFunction = this.#functions.find((f) => f.name === toolCall.function.name);
 		if (!llmFunction) throw new Error('Misconfigured tool: ' + toolCall.function.name);
 
 		let output: string;
@@ -155,9 +156,9 @@ class LLMSession<ResultType extends ZodType> {
 			output = JSON.stringify(results);
 
 			// Provide an intermediate summary if applicable
-			if (llmFunction.summarize && this.intermediateCallback) {
+			if (llmFunction.summarize && this.#intermediateCallback) {
 				try {
-					this.intermediateCallback(llmFunction.summarize(args, results));
+					this.#intermediateCallback(llmFunction.summarize(args, results));
 				} catch (error: unknown) {
 					// Don't let this error get to the LLM
 					console.error(error);
@@ -177,9 +178,9 @@ class LLMSession<ResultType extends ZodType> {
 	}
 
 	/** A turn without tool calls is the final answer, constrained to the result schema. */
-	private acceptResult(content: string | null) {
+	#acceptResult(content: string | null) {
 		try {
-			this.result = this.resultType.parse(JSON.parse(stripCodeFence(content ?? '')));
+			this.#result = this.#resultType.parse(JSON.parse(stripCodeFence(content ?? '')));
 		} catch (error: unknown) {
 			console.error(error);
 			this.addMessage({
@@ -189,24 +190,24 @@ class LLMSession<ResultType extends ZodType> {
 		}
 	}
 
-	private responseFormat(): ResponseFormatJSONSchema {
+	#responseFormat(): ResponseFormatJSONSchema {
 		return {
 			type: 'json_schema',
 			json_schema: {
 				name: 'result',
 				strict: true,
-				schema: toParameterSchema(this.resultType, true)
+				schema: toParameterSchema(this.#resultType, true)
 			}
 		};
 	}
 
-	private resultFunction(): LLMFunction<ResultType, { accepted: true }> {
+	#resultFunction(): LLMFunction<ResultType, { accepted: true }> {
 		return {
 			name: RESULT_TOOL_NAME,
 			description: 'Return the final result of the check. Call this exactly once, at the very end.',
-			parameters: this.resultType,
+			parameters: this.#resultType,
 			callback: async (args: z.infer<ResultType>) => {
-				this.result = args;
+				this.#result = args;
 				return { accepted: true };
 			}
 		};
