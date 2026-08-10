@@ -90,11 +90,11 @@ class LLMSession<ResultType extends ZodType> {
 
 		// One turn is one model response: either a batch of tool calls or the final answer
 		for (let turn = 0; turn < maxTurns && this.result === undefined; turn++) {
-			const message = await this.complete(tools, responseFormat);
+			const message = await this.#complete(tools, responseFormat);
 			this.addMessage(message);
 
 			if (message.tool_calls?.length) {
-				await this.runToolCalls(message.tool_calls);
+				await this.#runToolCalls(message.tool_calls);
 			} else if (structuredOutputs) {
 				this.acceptResult(message.content);
 			} else {
@@ -112,7 +112,7 @@ class LLMSession<ResultType extends ZodType> {
 		return this.result;
 	}
 
-	private async complete(
+	async #complete(
 		tools: ChatCompletionTool[],
 		responseFormat: ResponseFormatJSONSchema | undefined
 	) {
@@ -137,42 +137,43 @@ class LLMSession<ResultType extends ZodType> {
 		return message;
 	}
 
-	private async runToolCalls(toolCalls: ChatCompletionMessageToolCall[]) {
-		for (const toolCall of toolCalls) {
-			// Some gateways omit the (currently only) type discriminator
-			if (toolCall.type && toolCall.type !== 'function')
-				throw new Error('Unexpected tool call type');
+	async #runToolCall(toolCall: ChatCompletionMessageToolCall) {
+		// Some gateways omit the (currently only) type discriminator
+		if (toolCall.type && toolCall.type !== 'function') throw new Error('Unexpected tool call type');
 
-			const llmFunction = this.functions.find((f) => f.name === toolCall.function.name);
-			if (!llmFunction) throw new Error('Misconfigured tool: ' + toolCall.function.name);
+		const llmFunction = this.functions.find((f) => f.name === toolCall.function.name);
+		if (!llmFunction) throw new Error('Misconfigured tool: ' + toolCall.function.name);
 
-			let output: string;
-			try {
-				// Parse zod arguments (can throw LLM-friendly error messages).
-				// Parameterless calls may come back as an empty string instead of '{}'.
-				const args = llmFunction.parameters.parse(JSON.parse(toolCall.function.arguments || '{}'));
+		let output: string;
+		try {
+			// Parse zod arguments (can throw LLM-friendly error messages).
+			// Parameterless calls may come back as an empty string instead of '{}'.
+			const args = llmFunction.parameters.parse(JSON.parse(toolCall.function.arguments || '{}'));
 
-				// Execute the tool (this should do so similarly)
-				const results = await llmFunction.callback(args);
-				output = JSON.stringify(results);
+			// Execute the tool (this should do so similarly)
+			const results = await llmFunction.callback(args);
+			output = JSON.stringify(results);
 
-				// Provide an intermediate summary if applicable
-				if (llmFunction.summarize && this.intermediateCallback) {
-					try {
-						this.intermediateCallback(llmFunction.summarize(args, results));
-					} catch (error: unknown) {
-						// Don't let this error get to the LLM
-						console.error(error);
-					}
+			// Provide an intermediate summary if applicable
+			if (llmFunction.summarize && this.intermediateCallback) {
+				try {
+					this.intermediateCallback(llmFunction.summarize(args, results));
+				} catch (error: unknown) {
+					// Don't let this error get to the LLM
+					console.error(error);
 				}
-			} catch (error: unknown) {
-				console.error(error);
-				output = JSON.stringify({ error: describeError(error) });
 			}
-
-			// Tell the LLM about the result
-			this.addMessage({ role: 'tool', content: output, tool_call_id: toolCall.id });
+		} catch (error: unknown) {
+			console.error(error);
+			output = JSON.stringify({ error: describeError(error) });
 		}
+
+		// Tell the LLM about the result
+		this.addMessage({ role: 'tool', content: output, tool_call_id: toolCall.id });
+	}
+
+	async #runToolCalls(toolCalls: ChatCompletionMessageToolCall[]) {
+		await Promise.all(toolCalls.map((toolCall) => this.#runToolCall(toolCall)));
 	}
 
 	/** A turn without tool calls is the final answer, constrained to the result schema. */
