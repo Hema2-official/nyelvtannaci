@@ -12,6 +12,8 @@ type ProviderPreset = {
 	supportsDeveloperRole: boolean;
 	/** `strict: true` on tool definitions is an OpenAI structured-outputs feature. */
 	supportsStrictTools: boolean;
+	/** Whether `response_format: json_schema` constrains the final answer to the result schema. */
+	supportsStructuredOutputs: boolean;
 };
 
 const presets: Record<ProviderId, ProviderPreset> = {
@@ -19,7 +21,8 @@ const presets: Record<ProviderId, ProviderPreset> = {
 		baseURL: 'https://api.openai.com/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENAI_API_KEY'],
 		supportsDeveloperRole: true,
-		supportsStrictTools: true
+		supportsStrictTools: true,
+		supportsStructuredOutputs: true
 	},
 	// Zen (pay per token) and Go (subscription) are separate OpenCode services with
 	// separate endpoints and model catalogues, but they share one API key.
@@ -27,24 +30,30 @@ const presets: Record<ProviderId, ProviderPreset> = {
 		baseURL: 'https://opencode.ai/zen/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENCODE_API_KEY', 'OPENCODE_ZEN_API_KEY'],
 		supportsDeveloperRole: false,
-		supportsStrictTools: false
+		supportsStrictTools: false,
+		supportsStructuredOutputs: false
 	},
 	'opencode-go': {
 		baseURL: 'https://opencode.ai/zen/go/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENCODE_API_KEY', 'OPENCODE_GO_API_KEY'],
 		supportsDeveloperRole: false,
-		supportsStrictTools: false
+		supportsStrictTools: false,
+		supportsStructuredOutputs: false
 	},
 	openrouter: {
 		baseURL: 'https://openrouter.ai/api/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENROUTER_API_KEY'],
 		supportsDeveloperRole: false,
-		supportsStrictTools: false
+		supportsStrictTools: false,
+		// OpenRouter forwards json_schema to the models that support it, and its
+		// structured-outputs middleware covers most of the rest.
+		supportsStructuredOutputs: true
 	},
 	custom: {
 		apiKeyVars: ['LLM_API_KEY', 'OPENAI_API_KEY'],
 		supportsDeveloperRole: false,
-		supportsStrictTools: false
+		supportsStrictTools: false,
+		supportsStructuredOutputs: false
 	}
 };
 
@@ -67,7 +76,12 @@ export type LLMProvider = {
 	systemRole: 'developer' | 'system';
 	/** Whether tool parameter schemas may use OpenAI strict mode. */
 	strictTools: boolean;
-	messageLimit: number;
+	/** Whether the final answer can be constrained to the result schema. */
+	structuredOutputs: boolean;
+	/** Reasoning budget to request; undefined leaves the model on its own default. */
+	reasoningEffort?: string;
+	/** How many model responses a single session may consume. */
+	maxTurns: number;
 };
 
 function read(name: string) {
@@ -143,6 +157,8 @@ function createProvider(): LLMProvider {
 
 	const supportsDeveloperRole = readBoolean('LLM_DEVELOPER_ROLE') ?? preset.supportsDeveloperRole;
 	const strictTools = readBoolean('LLM_STRICT_TOOLS') ?? preset.supportsStrictTools;
+	const structuredOutputs =
+		readBoolean('LLM_STRUCTURED_OUTPUTS') ?? preset.supportsStructuredOutputs;
 
 	return {
 		id,
@@ -154,7 +170,9 @@ function createProvider(): LLMProvider {
 		model,
 		systemRole: supportsDeveloperRole ? 'developer' : 'system',
 		strictTools,
-		messageLimit: readPositiveInt('SESSION_MESSAGE_LIMIT', 100)
+		structuredOutputs,
+		reasoningEffort: read('LLM_REASONING_EFFORT'),
+		maxTurns: readPositiveInt('SESSION_MAX_TURNS', 25)
 	};
 }
 

@@ -4,7 +4,7 @@ import scraperAxios from './scraperAxios';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
-import type { LLMFunction } from '$lib/llm/promptConfig';
+import type { LLMFunction } from '$lib/llm/llmFunction.type';
 
 export const helyesEIgyParams = z.object({
 	input: z.string().describe('Ellenőrizendő szó')

@@ -3,7 +3,7 @@ import { MTA_BASE_URL } from '$env/static/private';
 import scraperAxios from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
-import type { LLMFunction } from '$lib/llm/promptConfig';
+import type { LLMFunction } from '$lib/llm/llmFunction.type';
 
 export const kulonVagyEgybeParams = z.object({
 	input: z.string().describe('Kérdéses szavak szóközzel elválasztva')

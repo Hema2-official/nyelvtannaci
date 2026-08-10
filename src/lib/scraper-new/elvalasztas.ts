@@ -3,7 +3,7 @@ import { parse } from 'node-html-parser';
 import scraperAxios from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
-import type { LLMFunction } from '$lib/llm/promptConfig';
+import type { LLMFunction } from '$lib/llm/llmFunction.type';
 
 export const elvalasztasParams = z.object({
 	input: z.string().describe('Elválasztandó szó vagy szavak')
