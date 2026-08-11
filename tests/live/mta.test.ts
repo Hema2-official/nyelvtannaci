@@ -1,0 +1,135 @@
+import { afterEach, describe, expect, it } from 'vitest';
+import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
+import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
+import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
+
+/**
+ * All of the scraping coverage, against the real site: nothing of MTA's is kept in the
+ * repo, so this is the only place the parsers meet actual markup.
+ *
+ * The site answers 500 to a burst of requests (the scraper's interceptor retries those),
+ * so these run one at a time with a pause in between.
+ */
+const pause = () => new Promise((resolve) => setTimeout(resolve, 1000));
+
+describe.sequential('kulon_vagy_egybe', () => {
+	afterEach(pause);
+
+	it('reads a solution with its rule and absolute reference links', async () => {
+		const [result, ...rest] = await scrapeKulonVagyEgybe({ input: 'nyelvtan ellenőrző' });
+
+		expect(rest).toEqual([]);
+		expect(result.solution).toBe('nyelvtanellenőrző');
+
+		const [step] = result.possibleExplanations[0].steps;
+		expect(step.action).toContain('egybeírjuk');
+		// hrefs are relative in the page and have to come back absolute
+		for (const href of Object.values(step.references)) expect(href).toMatch(/^https?:\/\//);
+	});
+
+	it('keeps every reading when the site offers more than one', async () => {
+		const [result] = await scrapeKulonVagyEgybe({ input: 'helyesírás ellenőrző' });
+
+		expect(result.solution).toBe('helyesírás-ellenőrző');
+		expect(result.possibleExplanations.length).toBeGreaterThan(1);
+
+		// the branches reach one spelling by different structures; collapsing them would
+		// hide the choice the model is asked to make
+		const endings = result.possibleExplanations.map((e) => e.steps.at(-1)?.action);
+		expect(new Set(endings).size).toBe(endings.length);
+	});
+
+	it('summarises a suggestion as a suggestion, and numbers competing readings', async () => {
+		const input = 'mesterséges színezék mentes';
+		const results = await scrapeKulonVagyEgybe({ input });
+
+		expect(results.length).toBeGreaterThan(1);
+		// the case has to exercise both shapes, or the assertions below prove nothing
+		expect(results.some((result) => result.possibleExplanations.length > 1)).toBe(true);
+		expect(results.some((result) => result.possibleExplanations.length === 1)).toBe(true);
+
+		const summaries = kulonVagyEgybeFunction.summarize!({ input }, results);
+
+		results.forEach((result, index) => {
+			const summary = summaries[index];
+
+			// this tool never judges what it was given, so there is no verdict to report
+			expect(summary.correct).toBeUndefined();
+			expect(summary.query).toBe(input);
+			expect(summary.expression).toBe(result.solution);
+			expect(summary.shareLink).toContain('/helyesiras/default/kulegy?q=');
+
+			if (result.possibleExplanations.length > 1)
+				expect(summary.explanation).toContain('1. lehetséges elemzés:');
+			else expect(summary.explanation).not.toContain('lehetséges elemzés:');
+		});
+	});
+
+	it('surfaces the message of an input the site refuses', async () => {
+		// note: this path rejects with a bare string rather than an Error
+		const error = await scrapeKulonVagyEgybe({ input: 'nyelvtan' }).catch((e: unknown) => e);
+
+		expect(String(error)).toContain('legalább 2');
+	});
+});
+
+describe.sequential('helyes-e_igy', () => {
+	afterEach(pause);
+
+	it('flags a misspelling and reports the verdict it does have', async () => {
+		const [result] = await scrapeHelyesEIgy({ input: 'tely' });
+
+		expect(result.correct).toBe(false);
+		expect(result.suggestions.join(', ')).toContain('tej');
+
+		const [summary] = helyesEIgyFunction.summarize!({ input: 'tely' }, [result]);
+		expect(summary.correct).toBe(false);
+		expect(summary.shareLink).toContain('/helyesiras/default/suggest?q=');
+	});
+
+	it('reads the tips of a correct but easily confused word', async () => {
+		const [result] = await scrapeHelyesEIgy({ input: 'egyenlőre' });
+
+		expect(result.correct).toBe(true);
+		// "L. még:" is expanded on the way out, so the model never has to decode it
+		expect(result.tips.join('\n')).toContain('Lásd még:');
+		expect(result.tips.join('\n')).not.toContain('L. még:');
+	});
+
+	it('keeps the notice about the input separate from the tips', async () => {
+		const [result] = await scrapeHelyesEIgy({ input: 'Nyelvtannaci' });
+
+		// the div[class^="result-"] banner, here pointing at Névkereső
+		expect(result.tips).toEqual([]);
+		expect(result.notices[0]).toContain('Névkereső');
+	});
+
+	it('puts a notice about the whole query on every result it produced', async () => {
+		const results = await scrapeHelyesEIgy({ input: 'nyelvtan ellenőrző' });
+
+		expect(results.map((result) => result.expression)).toEqual(['nyelvtan', 'ellenőrző']);
+		for (const result of results) expect(result.notices[0]).toContain('Külön vagy egybe?');
+	});
+});
+
+describe.sequential('elvalasztas', () => {
+	afterEach(pause);
+
+	it('returns one entry per word, in the notation the description explains', async () => {
+		const results = await scrapeElvalasztas({ input: 'magyar nyelvtan' });
+
+		expect(results).toEqual(['ma-gyar', 'nyelv|-tan']);
+	});
+
+	it('reports a suggestion rather than a verdict', async () => {
+		const input = 'magyar nyelvtan';
+		const results = await scrapeElvalasztas({ input });
+
+		const summaries = elvalasztasFunction.summarize!({ input }, results);
+
+		expect(summaries).toHaveLength(2);
+		expect(summaries[0].correct).toBeUndefined();
+		expect(summaries[0].query).toBe(input);
+		expect(summaries[0].shareLink).toContain('/helyesiras/default/hyph?q=');
+	});
+});
