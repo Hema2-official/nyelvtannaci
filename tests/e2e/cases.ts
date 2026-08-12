@@ -113,6 +113,15 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'The article goes by how the next word is read aloud, and 5 is "öt", so it takes "az". The model handles "a alma" -> "az alma" on its own but read straight past the digit, which is what szamok is for.'
 	},
 	{
+		name: 'unseen: paragraph, four errors',
+		input:
+			'A vállalat 2024. március 15.-én indította el az új munkaerőpiaci programját. A programba eddig kétezerhuszonnégy fiatal jelentkezett, közülük a 5. csoport már befejezte a képzést.',
+		expected:
+			'A vállalat 2024. március 15-én indította el az új munkaerő-piaci programját. A programba eddig kétezer-huszonnégy fiatal jelentkezett, közülük az 5. csoport már befejezte a képzést.',
+		inPrompt: false,
+		note: 'Every error here has its own single-sentence case, and each passes reliably alone; what this one measures is whether all four are still found when they compete for attention in one text. They are not, always. On deepseek-v4-flash at low effort it went 1/3 before the prompt had a completeness step, 3/4 with a general one and 4/5 once that step was tied to the compound measurement. The one it drops is nearly always munkaerő-piaci, after having called both tools for it. Treat a failure here as the known coverage limit rather than a regression, and check which error was dropped before assuming otherwise.'
+	},
+	{
 		name: 'unseen: leave a correct sentence alone',
 		input: 'Aláírtunk egy hosszú távú szerződést.',
 		expected: 'Aláírtunk egy hosszú távú szerződést.',

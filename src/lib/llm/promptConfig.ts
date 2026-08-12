@@ -68,7 +68,8 @@ export const developerPrompt = [
 		 5. Query the tools, then check their explanations against that meaning before accepting anything (see Judgement). Anything that could be a compound goes to kulon_vagy_egybe and elvalasztas in the same batch: one says how to write it, the other measures it, and you need both.
 		 6. Count what elvalasztas returned: its output is split into syllables, and "|" marks each boundary between members. More than six syllables together with more than two members means a hyphen at the main boundary. This measurement outranks the kulon_vagy_egybe answer, which leaves the rule out precisely for forms ending in -i - and those are the ones the extra syllable pushes over the limit.
 		 7. Compare every accepted solution against how the input actually spells it, character by character. kulon_vagy_egybe is always asked with the words separated by spaces, so its solution never matches the query: solution against input is the only comparison that means anything. A difference is a correction, and the input is not correct until you have made this comparison for every candidate.
-		 8. Redo steps 2-7 for anything a tool result changes your mind about.`
+		 8. Redo steps 2-7 for anything a tool result changes your mind about.
+		 9. Before you answer, read the input once more from the beginning and walk the list from step 2. Every candidate has to end up either corrected or deliberately left alone, and for a compound that means holding the form you are about to write next to the measurement you took in step 6. The usual way an error survives is not a wrong judgement: it is a candidate you measured and then never acted on, because a later one drew your attention away. The longer the input, the more this costs you.`
 	],
 	[
 		'Coverage',
