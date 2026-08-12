@@ -12,7 +12,7 @@ export const kulonVagyEgybeParams = z.object({
 
 export type ExplanationStep = {
 	action: string;
-	references: Record<string, string>;
+	references: string[];
 };
 export type PossibleExplanation = {
 	help: string;
@@ -103,13 +103,14 @@ export async function scrapeKulonVagyEgybe(
 				);
 				if (!action) continue;
 
-				const references: Record<string, string> = {};
+				// references with HREFs, might need later
+				const fullReferences: Record<string, string> = {};
 				for (const reference of step.querySelectorAll('.alink')) {
 					const key = reference.textContent?.trim();
 					const value = reference.getAttribute('href');
-					if (key && value) references[key] = MTA_BASE_URL + value; // # URL optimization
+					if (key && value) fullReferences[key] = MTA_BASE_URL + value; // # URL optimization
 				}
-				steps.push({ action, references });
+				steps.push({ action, references: Object.keys(fullReferences) });
 			}
 			possibleExplanations.push({ help, steps });
 		}
@@ -140,7 +141,6 @@ function provideSummary(
 	return results.map((result) => ({
 		query: args.input.trim(),
 		expression: result.solution,
-		// this tool suggests a form, it never judges the one it was given: no verdict to report
 		correct: undefined,
 		explanation: formatExplanations(result.possibleExplanations) || undefined,
 		shareLink: generateUrl(args.input)
