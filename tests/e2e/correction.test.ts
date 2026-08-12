@@ -28,7 +28,7 @@ type Run = {
 	ms: number;
 	/** How many times a tool actually ran. */
 	toolCalls: number;
-	/** What was asked of the tools, in order. */
+	/** What was asked of which tool, in order, as "tool: query". */
 	queries: string[];
 	expected: string;
 	got: string;
@@ -36,6 +36,14 @@ type Run = {
 };
 
 const runs: Run[] = [];
+
+/** The summaries carry no tool name, but the share link says which endpoint answered. */
+function toolOf(shareLink: string | undefined) {
+	if (shareLink?.includes('/kulegy')) return 'kulon_vagy_egybe';
+	if (shareLink?.includes('/suggest')) return 'helyes-e_igy';
+	if (shareLink?.includes('/hyph')) return 'elvalasztas';
+	return 'unknown';
+}
 
 const plan = correctionCases.flatMap((testCase) =>
 	Array.from({ length: repeats }, (_, index) => ({ testCase, run: index + 1 }))
@@ -55,7 +63,8 @@ describe.sequential('correction flow', () => {
 			try {
 				const result = await runSession(testCase.input, async (summaries) => {
 					toolCalls++;
-					queries.push(summaries[0]?.query ?? summaries[0]?.expression ?? '?');
+					const [summary] = summaries;
+					queries.push(`${toolOf(summary?.shareLink)}: ${summary?.query ?? summary?.expression}`);
 				});
 
 				got = correctedText(result);
