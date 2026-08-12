@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import scraperAxios from '$lib/scraper-new/scraperAxios';
+import { datumokFunction, scrapeDatumok } from '$lib/scraper-new/datumok';
 import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
 import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
 import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
+import { szamokFunction, scrapeSzamok } from '$lib/scraper-new/szamok';
 
 /** Make any request fail, so a test can prove no request was attempted. */
 function refuseRequests() {
@@ -42,9 +44,53 @@ describe.each([
 	});
 });
 
+/**
+ * These two take a machine-readable input the model has to build, so the guard is an
+ * allowlist rather than a blocklist: anything that is not a date or a number never goes out.
+ */
+describe.each([
+	[
+		'datumok',
+		scrapeDatumok,
+		['2024-01-01', ' 2024-01-01 '],
+		['', '2024.01.01', '2024. január 1.', '1-01-01', 'abc', '2024-01-01; DROP', '<script>']
+	],
+	[
+		'szamok',
+		scrapeSzamok,
+		['2024', '-5', '3,5', '1/2', ' 2024 '],
+		['', 'kétezer', '2024 db', 'abc', '2e4', '<script>']
+	]
+])('%s input validation', (_name, scrape, accepted, rejected) => {
+	let request: ReturnType<typeof refuseRequests>;
+
+	beforeEach(() => {
+		request = refuseRequests();
+	});
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it.each(rejected)('rejects %j without asking the site', async (input) => {
+		await expect(scrape({ input })).rejects.toThrow();
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it.each(accepted)('lets %j through to the site', async (input) => {
+		// the mock rejects everything, so reaching it is the assertion
+		await expect(scrape({ input })).rejects.toThrow(/reached the network/);
+		expect(request).toHaveBeenCalledOnce();
+	});
+});
+
 describe('tool definitions', () => {
 	it('gives every tool a name and a description the model can act on', () => {
-		for (const tool of [kulonVagyEgybeFunction, helyesEIgyFunction, elvalasztasFunction]) {
+		for (const tool of [
+			kulonVagyEgybeFunction,
+			helyesEIgyFunction,
+			elvalasztasFunction,
+			datumokFunction,
+			szamokFunction
+		]) {
 			expect(tool.name).toMatch(/^[a-z0-9_-]+$/i);
 			expect(tool.description.length).toBeGreaterThan(20);
 		}

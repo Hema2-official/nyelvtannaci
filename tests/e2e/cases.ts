@@ -92,6 +92,20 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'Same shape as the önéletrajz-alkotási example in the prompt, different word. kulon_vagy_egybe on "munkaerő piaci" offers both "munkaerő-piaci" and "munkaerőpiaci" and explains neither by length; only measuring decides. elvalasztas gives "mun-ka|-e-rő|-pi-a-ci": three members, seven syllables, so the hyphen is required. The noun is the counter-case that makes it easy to get wrong: "munkaerőpiac" is six syllables and stays solid.'
 	},
 	{
+		name: 'unseen: date suffix',
+		input: 'Az ünnep 1848. március 15.-én van.',
+		expected: 'Az ünnep 1848. március 15-én van.',
+		inPrompt: false,
+		note: 'A day already followed by a dot does not also take a dot before its suffix. datumok on "1848-03-15" lists "1848. március 15-én" and never the dotted form. Days ending in 1 are deliberately avoided here: for those AkH allows both "1-jén" and "1-én", so there would be no single right answer.'
+	},
+	{
+		name: 'unseen: number hyphen',
+		input: 'Kétezerhuszonnégy nyarán költöztünk.',
+		expected: 'Kétezer-huszonnégy nyarán költöztünk.',
+		inPrompt: false,
+		note: 'Written out in letters, a number above 2000 is broken with a hyphen at the thousand boundary. szamok on "2024" gives "kétezer-huszonnégy"; the model has to recognise the letters as a number first, and ask with digits.'
+	},
+	{
 		name: 'unseen: leave a correct sentence alone',
 		input: 'Aláírtunk egy hosszú távú szerződést.',
 		expected: 'Aláírtunk egy hosszú távú szerződést.',

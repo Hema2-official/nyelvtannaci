@@ -1,4 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { datumokFunction, scrapeDatumok } from '$lib/scraper-new/datumok';
+import { szamokFunction, scrapeSzamok } from '$lib/scraper-new/szamok';
 import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
 import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
 import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
@@ -109,6 +111,68 @@ describe.sequential('helyes-e_igy', () => {
 
 		expect(results.map((result) => result.expression)).toEqual(['nyelvtan', 'ellenőrző']);
 		for (const result of results) expect(result.notices[0]).toContain('Külön vagy egybe?');
+	});
+});
+
+describe.sequential('datumok', () => {
+	afterEach(pause);
+
+	it('lists the plain and the suffixed forms of one date', async () => {
+		const results = await scrapeDatumok({ input: '1848-03-15' });
+		const forms = results.map((result) => result.form);
+
+		// the two ul.result lists are merged, so both kinds have to be in there
+		expect(forms).toContain('1848. március 15.');
+		expect(forms).toContain('1848. március 15-én');
+		expect(forms).toContain('1848. márc. 15.');
+
+		const suffixed = results.find((result) => result.form === '1848. március 15-én');
+		expect(Object.values(suffixed!.references).join()).toMatch(/^https?:\/\//);
+	});
+
+	it('rejects a day that does not exist, in the words the site uses', async () => {
+		const error = await scrapeDatumok({ input: '2024-02-30' }).catch((e: unknown) => e);
+
+		expect(String(error)).toContain('Hibás dátum');
+	});
+
+	it('summarises the whole answer as one row', async () => {
+		const results = await scrapeDatumok({ input: '2024-01-01' });
+
+		const summaries = datumokFunction.summarize!({ input: '2024-01-01' }, results);
+
+		expect(summaries).toHaveLength(1);
+		expect(summaries[0].correct).toBeUndefined();
+		expect(summaries[0].query).toBe('2024-01-01');
+		expect(summaries[0].explanation).toContain('2024. január 1-je');
+		expect(summaries[0].shareLink).toContain('/helyesiras/default/dates?q=');
+	});
+});
+
+describe.sequential('szamok', () => {
+	afterEach(pause);
+
+	it('spells out a number and flags the non-standard variant', async () => {
+		const results = await scrapeSzamok({ input: '2024' });
+
+		expect(results[0].form).toBe('kétezer-huszonnégy');
+
+		const variant = results.find((result) => result.form === 'kettőezer-huszonnégy');
+		expect(variant?.note).toBe('Nem része a sztenderd nyelvváltozatnak.');
+	});
+
+	it('keeps the note that says when a form is the adjectival one', async () => {
+		const results = await scrapeSzamok({ input: '32' });
+
+		const adjectival = results.find((result) => result.form === 'harminckét');
+		expect(adjectival?.note).toContain('Jelzői értelemben');
+		expect(results.map((result) => result.form)).toContain('harminckettő');
+	});
+
+	it('handles fractions and decimals', async () => {
+		expect((await scrapeSzamok({ input: '3,5' }))[0].form).toBe('három egész öt tized');
+		await pause();
+		expect((await scrapeSzamok({ input: '1/2' })).map((r) => r.form)).toContain('egyketted');
 	});
 });
 

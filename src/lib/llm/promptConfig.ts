@@ -1,9 +1,17 @@
+import { datumokFunction } from '$lib/scraper-new/datumok';
 import { elvalasztasFunction } from '$lib/scraper-new/elvalasztas';
 import { helyesEIgyFunction } from '$lib/scraper-new/helyesEIgy';
 import { kulonVagyEgybeFunction } from '$lib/scraper-new/kulonVagyEgybe';
+import { szamokFunction } from '$lib/scraper-new/szamok';
 import { z } from 'zod';
 
-export const availableFunctions = [kulonVagyEgybeFunction, helyesEIgyFunction, elvalasztasFunction];
+export const availableFunctions = [
+	kulonVagyEgybeFunction,
+	helyesEIgyFunction,
+	elvalasztasFunction,
+	datumokFunction,
+	szamokFunction
+];
 
 const resultPartType = z.object({
 	text: z.string(),
@@ -47,12 +55,14 @@ export const developerPrompt = [
 		'Tools',
 		`- kulon_vagy_egybe: whether the given words (separated by spaces) go separately, together or hyphenated.
 		 - helyes-e_igy: whether a word is spelled correctly, with suggested spellings and tips.
-		 - elvalasztas: correct hyphenation of a word or words. Its notation also measures: "-" separates syllables and "|-" marks a compound boundary, so it tells you how many syllables a word has and where its members meet.`
+		 - elvalasztas: correct hyphenation of a word or words. Its notation also measures: "-" separates syllables and "|-" marks a compound boundary, so it tells you how many syllables a word has and where its members meet.
+		 - datumok: every accepted way of writing one date, suffixed forms included. Ask it with the date in ÉÉÉÉ-HH-NN form, whatever the text looks like.
+		 - szamok: a number spelled out in letters. Ask it with digits, whatever the text looks like.`
 	],
 	[
 		'Procedure',
 		`1. Read the whole input first and work out what it is trying to say. The sentence decides everything below.
-		 2. Collect the candidate word structures: neighbouring words that may form a compound, existing compounds, affixed forms, members of coordinated lists.
+		 2. Collect the candidate word structures: neighbouring words that may form a compound, existing compounds, affixed forms, members of coordinated lists. Dates and numbers are candidates too, written out in letters or in digits either way.
 		 3. For each candidate, spell out what it would mean written that way, in plain Hungarian: "mesterségesszínezék-mentes" = mentes a mesterséges színezéktől; "mesterséges-színezékmentes" = mesterségesen színezékmentes; "testreszabás" = az a folyamat, amikor valamit testre szabnak.
 		 4. Drop the readings that do not fit the sentence. What survives is the meaning you correct towards, and the meaning the tools must be asked about.
 		 5. Query the tools, then check their explanations against that meaning before accepting anything (see Judgement). Anything that could be a compound goes to kulon_vagy_egybe and elvalasztas in the same batch: one says how to write it, the other measures it, and you need both.
@@ -67,7 +77,8 @@ export const developerPrompt = [
 		 - the members of a compound on their own ("ablakpárkány" -> "ablak", "párkány");
 		 - words stripped of their affixes ("előadásokban" -> "előadás");
 		 - every compound candidate to elvalasztas as well, to count its syllables and members ("önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si");
-		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom").
+		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom");
+		 - every date and number, converted to the form its tool expects ("2024. januar 1-én" -> datumok "2024-01-01"; "kétezerhuszonnégy" -> szamok "2024"). Both answer with a list of accepted forms: the text is right if it matches one of them, and wrong if it matches none.
 		 Text that looks correct is worth checking too, compounds and lists especially. Batch what you can, and query again when a result changes what you suspect.`
 	],
 	[

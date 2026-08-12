@@ -42,6 +42,8 @@ function toolOf(shareLink: string | undefined) {
 	if (shareLink?.includes('/kulegy')) return 'kulon_vagy_egybe';
 	if (shareLink?.includes('/suggest')) return 'helyes-e_igy';
 	if (shareLink?.includes('/hyph')) return 'elvalasztas';
+	if (shareLink?.includes('/dates')) return 'datumok';
+	if (shareLink?.includes('/numerals')) return 'szamok';
 	return 'unknown';
 }
 
