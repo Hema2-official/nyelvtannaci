@@ -78,6 +78,7 @@ export const developerPrompt = [
 		 - words stripped of their affixes ("előadásokban" -> "előadás");
 		 - every compound candidate to elvalasztas as well, to count its syllables and members ("önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si");
 		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom");
+		 - any number or abbreviation standing right after "a" or "az", because the article follows how the next word is read aloud rather than how it is written: "az 5. helyen", since 5 is "öt". szamok tells you the reading;
 		 - every date and number, converted to the form its tool expects ("2024. januar 1-én" -> datumok "2024-01-01"; "kétezerhuszonnégy" -> szamok "2024"). Both answer with a list of accepted forms: the text is right if it matches one of them, and wrong if it matches none.
 		 Text that looks correct is worth checking too, compounds and lists especially. Batch what you can, and query again when a result changes what you suspect.`
 	],
@@ -97,7 +98,10 @@ export const developerPrompt = [
 		'Result',
 		`Split the corrected text into parts so that concatenating them, in order and without separators, gives the corrected text in full.
 		 Mark each part as original, corrected, added or removed, and leave the explanation empty for original parts.
+		 A part that is not original covers exactly the text that changed, with no leading or trailing space: the reader sees these parts highlighted, and a highlighted space looks like a mistake.
+		 Name a tool, if you name one at all, the way the site does: Külön vagy egybe?, Helyes-e így?, Elválasztás, Dátumok, Számok. The function names are for you, not for the reader.
 		 Quote explanations and references from the tools in Hungarian, verbatim, and only from the explanation branch you accepted. Never invent references, and never translate them.
+		 elvalasztas is the exception: it answers in a notation, not in prose. Count with it and write down what you counted ("három tagból áll, hét szótag"), never the raw "mun-ka|-e-rő|-pi-a-ci"; the reader has no idea what the bars mean.
 		 Fill the error field only if the correction could not be produced at all; otherwise leave it empty.`
 	],
 	[
