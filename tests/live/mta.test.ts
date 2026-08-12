@@ -91,11 +91,15 @@ describe.sequential('helyes-e_igy', () => {
 
 	it('reads the tips of a correct but easily confused word', async () => {
 		const [result] = await scrapeHelyesEIgy({ input: 'egyenlőre' });
+		const tips = result.tips.join('\n');
 
 		expect(result.correct).toBe(true);
-		// "L. még:" is expanded on the way out, so the model never has to decode it
-		expect(result.tips.join('\n')).toContain('Lásd még:');
-		expect(result.tips.join('\n')).not.toContain('L. még:');
+		// the site's shorthand is expanded on the way out, so the model never has to decode it
+		expect(tips).toContain('Lásd még:');
+		expect(tips).not.toContain('L. még:');
+		expect(tips).toContain('Például:');
+		// and the bare gloss line is labelled as the meaning it is
+		expect(tips).toMatch(/Jelentése: ’.+’/);
 	});
 
 	it('keeps the notice about the input separate from the tips', async () => {
