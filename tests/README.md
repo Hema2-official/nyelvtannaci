@@ -66,6 +66,16 @@ npx vitest run tests/e2e -t "kissebb"
 `npx vitest list tests/e2e` prints the names as the filter sees them. Vitest truncates a long
 interpolated title, and matches on the truncated text, which is why case names are kept short.
 
+Run it against a second model now and then, even one you do not intend to use. The prompt
+gets tuned against whatever is configured, and a different model walks straight into wording
+that the configured one happens to read correctly — "measure the exact form you are going to
+write" is circular when the hyphen is the question, and gpt-5.6-luna duly measured the
+already-hyphenated form. Two such ambiguities came out of one cross-model run, both of them
+bugs in the prompt rather than in the model.
+
+One case, `paragraph, four errors`, fails perhaps one run in five by design; its note carries
+the measured rates. Check which error was dropped before assuming a regression.
+
 Useful knobs: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_REASONING_EFFORT`, `LLM_STRUCTURED_OUTPUTS`,
 `SESSION_MAX_TURNS`, and `BENCH_REPEATS=3` to run every case N times when you care about
 variance rather than a single sample.
