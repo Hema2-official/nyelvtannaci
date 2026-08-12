@@ -5,6 +5,6 @@ const linguisticOptimizations = {
 
 export default function optimizeForLLM(text: string) {
 	for (const [key, value] of Object.entries(linguisticOptimizations))
-		text = text.replace(key, value);
+		text = text.replaceAll(key, value);
 	return text;
 }
