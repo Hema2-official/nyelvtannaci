@@ -76,7 +76,7 @@ export const developerPrompt = [
 		`The tools only answer about what you send them, so decide what is worth sending. Typically:
 		 - neighbouring words that may form a compound ("testre szabás", "matek verseny");
 		 - the members of a compound on their own ("ablakpárkány" -> "ablak", "párkány");
-		 - words stripped of their affixes ("előadásokban" -> "előadás"). You strip them to ask, not to answer: the correction carries every affix the input had, so "számítógép programot" ends up as "számítógépprogramot" and never as "számítógépprogram";
+		 - words stripped of their affixes ("előadásokban" -> "előadás"). You strip them to ask, not to answer: the correction carries back every affix the input had, and a tool's base form is never the answer on its own. "számítógép programot" ends as "számítógépprogramot", not "számítógépprogram"; "vissza térek" ends as "visszatérek", not "visszatér", which would quietly say that somebody else is going;
 		 - every compound candidate to elvalasztas as well, written as one word, to count its syllables and members ("önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si");
 		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom");
 		 - any number or abbreviation standing right after "a" or "az", because the article follows how the next word is read aloud rather than how it is written: "az 5. helyen", since 5 is "öt". szamok tells you the reading;
