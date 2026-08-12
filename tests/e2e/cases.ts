@@ -106,6 +106,13 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'Written out in letters, a number above 2000 is broken with a hyphen at the thousand boundary. szamok on "2024" gives "kétezer-huszonnégy"; the model has to recognise the letters as a number first, and ask with digits.'
 	},
 	{
+		name: 'unseen: article before a digit',
+		input: 'A csapat a 5. helyen végzett.',
+		expected: 'A csapat az 5. helyen végzett.',
+		inPrompt: false,
+		note: 'The article goes by how the next word is read aloud, and 5 is "öt", so it takes "az". The model handles "a alma" -> "az alma" on its own but read straight past the digit, which is what szamok is for.'
+	},
+	{
 		name: 'unseen: leave a correct sentence alone',
 		input: 'Aláírtunk egy hosszú távú szerződést.',
 		expected: 'Aláírtunk egy hosszú távú szerződést.',
