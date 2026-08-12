@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { datumokFunction, scrapeDatumok } from '$lib/scraper-new/datumok';
-import { szamokFunction, scrapeSzamok } from '$lib/scraper-new/szamok';
+import { scrapeSzamok } from '$lib/scraper-new/szamok';
 import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
 import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
 import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
@@ -17,7 +17,7 @@ const pause = () => new Promise((resolve) => setTimeout(resolve, 1000));
 describe.sequential('kulon_vagy_egybe', () => {
 	afterEach(pause);
 
-	it('reads a solution with its rule and absolute reference links', async () => {
+	it('reads a solution with its rule and its rule identifiers', async () => {
 		const [result, ...rest] = await scrapeKulonVagyEgybe({ input: 'nyelvtan ellenőrző' });
 
 		expect(rest).toEqual([]);
@@ -25,8 +25,9 @@ describe.sequential('kulon_vagy_egybe', () => {
 
 		const [step] = result.possibleExplanations[0].steps;
 		expect(step.action).toContain('egybeírjuk');
-		// hrefs are relative in the page and have to come back absolute
-		for (const href of Object.values(step.references)) expect(href).toMatch(/^https?:\/\//);
+
+		expect(step.references.length).toBeGreaterThan(0);
+		for (const reference of step.references) expect(reference).toMatch(/^AkH1[12]-\d+[a-z]?$/);
 	});
 
 	it('keeps every reading when the site offers more than one', async () => {
@@ -131,7 +132,8 @@ describe.sequential('datumok', () => {
 		expect(forms).toContain('1848. márc. 15.');
 
 		const suffixed = results.find((result) => result.form === '1848. március 15-én');
-		expect(Object.values(suffixed!.references).join()).toMatch(/^https?:\/\//);
+		expect(suffixed?.references).toContain('AkH12-298');
+		for (const reference of suffixed!.references) expect(reference).toMatch(/^AkH1[12]-/);
 	});
 
 	it('rejects a day that does not exist, in the words the site uses', async () => {
