@@ -1,4 +1,5 @@
 import { MTA_BASE_URL } from '$env/static/private';
+import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import type { HTMLElement } from 'node-html-parser';
 
 /** One accepted way of writing something, as the site lists it. */
@@ -30,13 +31,14 @@ export function parseAkhForms(doc: HTMLElement): AkhForm[] {
 		}
 
 		// "(Nem része a sztenderd nyelvváltozatnak.)" and friends, kept but unwrapped
-		const note =
+		const note = optimizeForLLM(
 			closed === -1
 				? ''
 				: text
 						.slice(closed + 1)
 						.trim()
-						.replace(/^\((.*)\)$/s, '$1');
+						.replace(/^\((.*)\)$/s, '$1')
+		);
 
 		forms.push({ form, references: Object.keys(fullReferences), ...(note ? { note } : {}) });
 	}

@@ -1,5 +1,6 @@
 import { parse } from 'node-html-parser';
 import { MTA_BASE_URL } from '$env/static/private';
+import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import scraperAxios from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
@@ -86,16 +87,20 @@ export async function scrapeKulonVagyEgybe(
 		const possibleExplanations: PossibleExplanation[] = [];
 		for (const explanationNode of resultNode.querySelectorAll('.explanation')) {
 			// help CAN be empty
-			const help = explanationNode.querySelector('.expl_help')?.textContent?.trim() ?? '';
+			const help = optimizeForLLM(
+				explanationNode.querySelector('.expl_help')?.textContent?.trim() ?? ''
+			);
 
 			// parse steps
 			const steps: ExplanationStep[] = [];
 			for (const step of explanationNode.querySelectorAll('.step_body')) {
-				const action = step.textContent
-					?.substring(0, step.textContent.lastIndexOf('['))
-					.replace(/\n/g, ' ')
-					.replace(/ {2,}/g, ' ') // remove multiple spaces between words
-					.trim();
+				const action = optimizeForLLM(
+					step.textContent
+						?.substring(0, step.textContent.lastIndexOf('['))
+						.replace(/\n/g, ' ')
+						.replace(/ {2,}/g, ' ') // remove multiple spaces between words
+						.trim()
+				);
 				if (!action) continue;
 
 				const references: Record<string, string> = {};
