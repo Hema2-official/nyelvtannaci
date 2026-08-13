@@ -6,6 +6,7 @@ import getProvider from '$lib/llm/provider';
 import { developerPrompt } from '$lib/llm/promptConfig';
 import { errorMessage } from '$lib/utils/errorMessage';
 import { comparableText, conformanceProblem, correctedText, correctionCases } from './cases';
+import type { Result } from '$lib/llm/promptConfig';
 
 /**
  * The whole flow: prompt -> model -> MTA tools -> result. Every case is a real session,
@@ -33,6 +34,12 @@ type Run = {
 	expected: string;
 	got: string;
 	problem?: string;
+	/**
+	 * Kept only for a run that failed. A conformance problem is a fault in the parts rather
+	 * than in the text - an explanation where there should be none, a part that is empty -
+	 * and the joined text cannot show you any of that.
+	 */
+	parts?: Result['resultParts'];
 };
 
 const runs: Run[] = [];
@@ -61,6 +68,7 @@ describe.sequential('correction flow', () => {
 
 			let got = '';
 			let problem: string | undefined;
+			let parts: Result['resultParts'] | undefined;
 
 			try {
 				const result = await runSession(testCase.input, async (summaries) => {
@@ -70,6 +78,7 @@ describe.sequential('correction flow', () => {
 				});
 
 				got = correctedText(result);
+				parts = result.resultParts;
 				problem =
 					conformanceProblem(result) ??
 					(comparableText(got) === comparableText(testCase.expected) ? undefined : 'mismatch');
@@ -88,7 +97,8 @@ describe.sequential('correction flow', () => {
 				queries,
 				expected: testCase.expected,
 				got,
-				problem
+				problem,
+				...(problem && parts ? { parts } : {})
 			});
 
 			// One assertion carrying both facts, so a failure shows the text and the reason at
