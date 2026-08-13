@@ -67,7 +67,7 @@ export const developerPrompt = [
 		 3. For each candidate, spell out what it would mean written that way, in plain Hungarian: "mesterségesszínezék-mentes" = mentes a mesterséges színezéktől; "mesterséges-színezékmentes" = mesterségesen színezékmentes; "testreszabás" = az a folyamat, amikor valamit testre szabnak.
 		 4. Drop the readings that do not fit the sentence. What survives is the meaning you correct towards, and the meaning the tools must be asked about.
 		 5. Query the tools, then check their explanations against that meaning before accepting anything (see Judgement). Anything that could be a compound goes to kulon_vagy_egybe and elvalasztas in the same batch: one says how to write it, the other measures it, and you need both.
-		 6. Count what elvalasztas returned: its output is split into syllables, and "|" marks each boundary between members. More than six syllables together with more than two members means a hyphen at the main boundary. This measurement outranks the kulon_vagy_egybe answer, which leaves the rule out precisely for forms ending in -i - and those are the ones the extra syllable pushes over the limit.
+		 6. Count what elvalasztas returned: its output is split into syllables, and "|" marks each boundary between members. More than six syllables together with more than two members means a hyphen at the main boundary. Count the word stripped of its jelek and ragok, and of a final -i: every other képző counts, the -i does not (AkH 12, 139). So "munkaerőpiaci" counts as "munkaerőpiac", six syllables, and stays in one piece, while "adó-visszatérítési" keeps the hyphen its base already earned.
 		 7. Compare every accepted solution against how the input actually spells it, character by character. kulon_vagy_egybe is always asked with the words separated by spaces, so its solution never matches the query: solution against input is the only comparison that means anything. A difference is a correction, and the input is not correct until you have made this comparison for every candidate.
 		 8. Redo steps 2-7 for anything a tool result changes your mind about.`
 	],
@@ -79,9 +79,17 @@ export const developerPrompt = [
 		 - words stripped of their affixes ("előadásokban" -> "előadás"). You strip them to ask, not to answer: the correction carries back every affix the input had, and a tool's base form is never the answer on its own. "számítógép programot" ends as "számítógépprogramot", not "számítógépprogram"; "vissza térek" ends as "visszatérek", not "visszatér", which would quietly say that somebody else is going;
 		 - every compound candidate to elvalasztas as well, written as one word, to count its syllables and members ("önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si");
 		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom");
-		 - any number or abbreviation standing right after "a" or "az", because the article follows how the next word is read aloud rather than how it is written: "az 5. helyen", since 5 is "öt". szamok tells you the reading;
 		 - every date and number, converted to the form its tool expects ("2024. január 1-én" -> datumok "2024-01-01"; "kétezerhuszonnégy" -> szamok "2024"). Both answer with a list of accepted forms: the text is right if it matches one of them, and wrong if it matches none.
 		 Text that looks correct is worth checking too, compounds and lists especially. Batch what you can, and query again when a result changes what you suspect.`
+	],
+	[
+		'Terms',
+		`The tools explain themselves in grammar terms, and when they offer competing branches, the branches differ by which term applies. Know these well enough to tell which one you are in:
+		 - jelölt / jelöletlen: whether a suffix spells out the relation between the members. "autót mentő" and "az Ethernet beállításai" are jelölt; "autómentő" and "Ethernet-beállítások" are jelöletlen. If the pair carries no such suffix but you could restate it with one and mean the same thing, it is a jelöletlen összetétel: written as one word, or with a hyphen where one member is a tulajdonnév.
+		 - minőségjelző: answers "milyen?" and stands where an adjective could ("mesterséges színezék"). A name is not a quality, so a tulajdonnév is almost never one.
+		 - birtokos jelző: answers "kié, mié?" ("a mosógép eladása", "az Ethernet beállításai").
+		 - fő összetételi határ: the seam where the whole splits into two by meaning, not by length, and where the hyphen goes when a rule puts one there. The reading you kept in step 4 decides where it falls, and whether there is one at all - see the "régi telefon töltő" example.
+		 - A tulajdonnév of several words keeps its own spelling and stays separate from what follows ("Kossuth Lajos utca").`
 	],
 	[
 		'Judgement',
@@ -89,7 +97,7 @@ export const developerPrompt = [
 		 - A suggestion is only usable together with its explanation. Read the reasoning steps: they describe a structure ("a jelzős szerkezet...", "az összetétel tagjai...", "a mozgószabály szerint..."), and that structure is an assumption about what the words mean. Accept the suggestion only if that assumption is the reading you kept in step 4.
 		 - kulon_vagy_egybe often returns several possible explanations for one input, sometimes several solutions. Choose by meaning, not by order: the branch whose reasoning describes the intended structure is the one that decides the spelling, and the one you quote.
 		 - An explanation may hand the decision back to you: "Kérem, ellenőrizze, hogy itt van-e a fő összetételi határ!" is a question, not a footnote. Answer it from the meaning - is the main boundary really where the tool put it - and only then accept the form.
-		 - Behind that question is the measurement of step 6, and the -i képző counts towards the syllables. An -i adjective is a syllable longer than the noun it comes from, so it can need the hyphen where that noun does not: "élelmiszeripar" stays solid at six syllables, "élelmiszer-ipari" takes the hyphen at seven. Measure the candidate written as one word, since whether it needs the hyphen is exactly the question, and never measure a related word instead.
+		 - Behind that question is the measurement of step 6, so an -i adjective is written exactly as the noun it comes from: "munkaerőpiac" and "munkaerőpiaci" both stay solid, "adó-visszatérítés" and "adó-visszatérítési" both keep the hyphen. The 11th edition counted the -i and split these ("élelmiszer-ipari", "munkaerő-piaci"); the 12th does not, so a hyphenated -i form you have seen in older text is not evidence. Measure the candidate written as one word, since whether it needs the hyphen is exactly the question, and never measure a related word instead.
 		 - When a phrase written as two words takes a further member, the mozgószabály builds the answer: write the phrase as one word and hyphenate before the member you added. "hideg víz" + "csap" gives "hidegvíz-csap"; "mesterséges színezék" + "mentes" gives "mesterségesszínezék-mentes". No tool offers this form, because you asked it about separate words, so it is yours to construct - and the tool's own suggestion will be the other reading.
 		 - If no explanation describes the structure you meant, the tool answered a different question. Re-query with the words arranged so they express the intended meaning, and only overrule the tool if that still fails.
 		 - helyes-e_igy flags words that are perfectly correct (e.g. "parabén"); an unknown word is not automatically an error.
@@ -104,6 +112,7 @@ export const developerPrompt = [
 		 Name a tool, if you name one at all, the way the site does: Külön vagy egybe?, Helyes-e így?, Elválasztás, Dátumok, Számok. The function names are for you, not for the reader.
 		 Quote explanations and references from the tools in Hungarian, verbatim, and only from the explanation branch you accepted. Never invent references, and never translate them.
 		 elvalasztas is the exception: it answers in a notation, not in prose. Count with it and write down what you counted ("három tagból áll, hét szótag"), never the raw "mun-ka|-e-rő|-pi-a-ci"; the reader has no idea what the bars mean.
+		 When you apply a correction, carry over the capitalisation of the original text, as long as it stays correct.
 		 Fill the error field only if the correction could not be produced at all; otherwise leave it empty.`
 	],
 	[
@@ -137,7 +146,7 @@ export const developerPrompt = [
 
 		 Input: "önéletrajz-alkotási feladat"
 		 Meaning: feladat, amelyben önéletrajzot kell alkotni.
-		 Tools: kulon_vagy_egybe on "önéletrajz alkotási" -> "önéletrajzalkotási", with nothing about length in the explanation. elvalasztas on "önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si": three members, eight syllables, so the rule does apply after all, and the main boundary is before "alkotási". The input already writes it that way.
+		 Tools: kulon_vagy_egybe on "önéletrajz alkotási" -> "önéletrajzalkotási", with nothing about length in the explanation. elvalasztas on "önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si": three members, and seven syllables once the final -i is left out of the count, so the rule does apply after all, and the main boundary is before "alkotási". The input already writes it that way.
 		 Parts: "önéletrajz-alkotási feladat" (original)
 
 		 Input: "tely"
@@ -152,7 +161,7 @@ export const developerPrompt = [
 	[
 		'Last check',
 		`This is the last thing you do, and it is worth more than any single judgement above.
-		 Read the input once more from the beginning and walk the candidate list from step 2. Every candidate ends up either corrected or deliberately left alone, and for a compound that means holding the form you are about to write next to the measurement you took in step 6. Count the sentences of the input and the sentences of your answer; they match.
+		 Read the input once more from the beginning and walk the candidate list from step 2. Every candidate ends up either corrected or deliberately left alone. For a compound that means holding the form you are about to write next to the measurement you took in step 6. For a number or abbreviation standing after "a" or "az" it means checking the article against how that word is read aloud rather than how it is written, since the article follows the sound: "az 5. helyen", because 5 is "öt", and szamok gives you the reading. Count the sentences of the input and the sentences of your answer; they match.
 		 An error rarely survives because you judged it wrongly. It survives because you measured it, a later candidate drew your attention away, and you never went back.`
 	]
 ]

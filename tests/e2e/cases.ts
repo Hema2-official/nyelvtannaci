@@ -85,11 +85,11 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'helyes-e_igy rejects "kissebb" and suggests "kisebb" first.'
 	},
 	{
-		name: 'unseen: munkaerő-piaci',
+		name: 'unseen: munkaerőpiaci stays solid',
 		input: 'Rossz a munkaerőpiaci helyzet.',
-		expected: 'Rossz a munkaerő-piaci helyzet.',
+		expected: 'Rossz a munkaerőpiaci helyzet.',
 		inPrompt: false,
-		note: 'Same shape as the önéletrajz-alkotási example in the prompt, different word. kulon_vagy_egybe on "munkaerő piaci" offers both "munkaerő-piaci" and "munkaerőpiaci" and explains neither by length; only measuring decides. elvalasztas gives "mun-ka|-e-rő|-pi-a-ci": three members, seven syllables, so the hyphen is required. The noun is the counter-case that makes it easy to get wrong: "munkaerőpiac" is six syllables and stays solid.'
+		note: 'A false-positive control for the syllable rule, and a trap. elvalasztas gives "mun-ka|-e-rő|-pi-a-ci", which looks like three members over seven syllables, so counting what you see says hyphenate. It does not: AkH 12 rule 139 leaves a final -i out of the count ("A képző - az -i kivételével - beleszámít a szótagszámba"), and lists "munkaerőpiaci" among its own examples. The base is "munkaerőpiac" at six. The 11th edition did count the -i, which is why "munkaerő-piaci" is all over older text and why kulon_vagy_egybe still offers it first.'
 	},
 	{
 		name: 'unseen: date suffix',
@@ -113,13 +113,13 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'The article goes by how the next word is read aloud, and 5 is "öt", so it takes "az". The model handles "a alma" -> "az alma" on its own but read straight past the digit, which is what szamok is for.'
 	},
 	{
-		name: 'unseen: paragraph, four errors',
+		name: 'unseen: paragraph, three errors',
 		input:
 			'A vállalat 2024. március 15.-én indította el az új munkaerőpiaci programját. A programba eddig kétezerhuszonnégy fiatal jelentkezett, közülük a 5. csoport már befejezte a képzést.',
 		expected:
-			'A vállalat 2024. március 15-én indította el az új munkaerő-piaci programját. A programba eddig kétezer-huszonnégy fiatal jelentkezett, közülük az 5. csoport már befejezte a képzést.',
+			'A vállalat 2024. március 15-én indította el az új munkaerőpiaci programját. A programba eddig kétezer-huszonnégy fiatal jelentkezett, közülük az 5. csoport már befejezte a képzést.',
 		inPrompt: false,
-		note: 'Every error here has its own single-sentence case, and each passes reliably alone; what this one measures is whether all four are still found when they compete for attention in one text. They are not, always. On deepseek-v4-flash at low effort it went 1/3 before the prompt had a completeness step, 3/4 with a general one and 4/5 once that step was tied to the compound measurement. The one it drops is nearly always munkaerő-piaci, after having called both tools for it. Treat a failure here as the known coverage limit rather than a regression, and check which error was dropped before assuming otherwise.'
+		note: 'Each error here has its own single-sentence case and passes reliably alone; what this one measures is whether all three are still found when they compete for attention in one text, and whether "munkaerőpiaci" survives being surrounded by things that do need changing. Historically the flakiest case in the suite: on deepseek-v4-flash at low effort it went 1/3 before the prompt had a completeness step, 3/4 with a general one and 4/5 once that step was tied to the compound measurement. Check which error was dropped before assuming a regression.'
 	},
 	{
 		name: 'unseen: keeps command-like text',
