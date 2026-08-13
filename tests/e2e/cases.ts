@@ -169,11 +169,6 @@ export function conformanceProblem(result: Result): string | undefined {
 
 	if (result.resultParts.length === 0) return 'no result parts';
 
-	const explained = result.resultParts.find(
-		(part) => part.type === 'original' && part.explanation.trim()
-	);
-	if (explained) return `original part carries an explanation: "${explained.text}"`;
-
 	const empty = result.resultParts.find((part) => part.text === '');
 	if (empty) return 'a result part has empty text';
 

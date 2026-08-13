@@ -23,7 +23,7 @@ const resultPartType = z.object({
 	explanation: z
 		.string()
 		.describe(
-			'Explanation for the actions taken to correct this part (can be empty). If the part is original, this should be empty.'
+			`Explanation for the actions taken to correct this part (can be empty). If the part is original, this should be empty, except if there's a really good reason to say something.`
 		),
 	references: z.array(z.string()).describe('Corresponding references, if any')
 });
@@ -108,7 +108,7 @@ export const developerPrompt = [
 	[
 		'Result',
 		`Split the corrected text into parts so that concatenating them, in order and without separators, gives the corrected text in full.
-		 Mark each part as original, corrected, added or removed, and leave the explanation empty for original parts.
+		 Mark each part as original, corrected, added or removed. Explanations belong on the parts you changed; give one to an original part only when the reason it stayed as it was is worth the reader's time, and to the whole of it rather than to some fragment.
 		 Every word of the input has to end up in some part. What you leave alone is original, what you genuinely take out is removed and says why. Nothing may simply disappear: a sentence missing from the result is the one failure the reader cannot see.
 		 A part that is not original covers exactly the text that changed, with no leading or trailing space: the reader sees these parts highlighted, and a highlighted space looks like a mistake.
 		 Name a tool, if you name one at all, the way the site does: Külön vagy egybe?, Helyes-e így?, Elválasztás, Dátumok, Számok. The function names are for you, not for the reader.
