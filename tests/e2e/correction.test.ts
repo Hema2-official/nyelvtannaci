@@ -18,6 +18,21 @@ import type { Result } from '$lib/llm/promptConfig';
  */
 const repeats = Math.max(1, Number(process.env.BENCH_REPEATS ?? '1'));
 
+/**
+ * BENCH_CASES=tely,Ethernet runs only the cases whose name contains one of those, which is
+ * what makes a sweep across many models affordable. Unset runs everything.
+ */
+const only = (process.env.BENCH_CASES ?? '')
+	.split(',')
+	.map((name) => name.trim().toLowerCase())
+	.filter(Boolean);
+
+const selectedCases = only.length
+	? correctionCases.filter((testCase) => only.some((name) => testCase.name.toLowerCase().includes(name)))
+	: correctionCases;
+
+if (selectedCases.length === 0) throw new Error(`BENCH_CASES matched no case: ${only.join(', ')}`);
+
 /** A session is many model turns; it needs far longer than the default. */
 const sessionTimeout = 600_000;
 
@@ -54,7 +69,7 @@ function toolOf(shareLink: string | undefined) {
 	return 'unknown';
 }
 
-const plan = correctionCases.flatMap((testCase) =>
+const plan = selectedCases.flatMap((testCase) =>
 	Array.from({ length: repeats }, (_, index) => ({ testCase, run: index + 1 }))
 );
 
