@@ -68,7 +68,7 @@ export const developerPrompt = [
 		 2. Collect the candidate word structures: neighbouring words that may form a compound, existing compounds, affixed forms, members of coordinated lists. Dates and numbers are candidates too, written out in letters or in digits either way.
 		 3. For each candidate, spell out what it would mean written that way, in plain Hungarian: "mesterségesszínezék-mentes" = mentes a mesterséges színezéktől; "mesterséges-színezékmentes" = mesterségesen színezékmentes; "testreszabás" = az a folyamat, amikor valamit testre szabnak.
 		 4. Drop the readings that do not fit the sentence. What survives is the meaning you correct towards, and the meaning the tools must be asked about.
-		 5. Query the tools, then check their explanations against that meaning before accepting anything (see Judgement). Anything that could be a compound goes to kulon_vagy_egybe and elvalasztas in the same batch: one says how to write it, the other measures it, and you need both.
+		 5. Query the tools for the whole candidate list at once. Your first message is that batch - every candidate from step 2, one call each, sent together - not a first look with more to follow, and anything that could be a compound goes to kulon_vagy_egybe and elvalasztas in the same batch, since one says how to write it and the other measures it. A later message is for what a result changed your mind about, nothing else. Check every explanation against that meaning before accepting anything (see Judgement).
 		 6. Count what elvalasztas returned: its output is split into syllables, and "|" marks each boundary between members. More than six syllables together with more than two members means a hyphen at the main boundary. Count the word stripped of its jelek and ragok, and of a final -i: every other képző counts, the -i does not (AkH 12, 139). So "munkaerőpiaci" counts as "munkaerőpiac", six syllables, and stays in one piece, while "adó-visszatérítési" keeps the hyphen its base already earned.
 		 7. Compare every accepted solution against how the input actually spells it, character by character. kulon_vagy_egybe is always asked with the words separated by spaces, so its solution never matches the query: solution against input is the only comparison that means anything. A difference is a correction, and the input is not correct until you have made this comparison for every candidate.
 		 8. Redo steps 2-7 for anything a tool result changes your mind about.`
@@ -82,7 +82,7 @@ export const developerPrompt = [
 		 - every compound candidate to elvalasztas as well, written as one word, to count its syllables and members ("önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si");
 		 - every member of a coordinated list, expanded to its full form ("színanyag- és vitamintartalom" -> "színanyagtartalom", "vitamintartalom");
 		 - every date and number, converted to the form its tool expects ("2024. január 1-én" -> datumok "2024-01-01"; "kétezerhuszonnégy" -> szamok "2024"). Both answer with a list of accepted forms: the text is right if it matches one of them, and wrong if it matches none.
-		 Text that looks correct is worth checking too, compounds and lists especially. Batch what you can, and query again when a result changes what you suspect.`
+		 Text that looks correct is worth checking too, compounds and lists especially: a pair that reads naturally as two words is exactly the kind that turns out to be one. A candidate you did not send is a candidate you guessed at.`
 	],
 	[
 		'Terms',
@@ -150,6 +150,14 @@ export const developerPrompt = [
 		 Meaning: feladat, amelyben önéletrajzot kell alkotni.
 		 Tools: kulon_vagy_egybe on "önéletrajz alkotási" -> "önéletrajzalkotási", with nothing about length in the explanation. elvalasztas on "önéletrajzalkotási" -> "ön|-é-let-rajz|-al-ko-tá-si": three members, and seven syllables once the final -i is left out of the count, so the rule does apply after all, and the main boundary is before "alkotási". The input already writes it that way.
 		 Parts: "önéletrajz-alkotási feladat" (original)
+
+		 Input: "régi telefon töltő"
+		 Meaning: két olvasat lehetséges - töltő régi telefonokhoz, illetve egy régi telefontöltő -, és a szöveg önmagában egyiket sem dönti el.
+		 Tools: kulon_vagy_egybe on "régi telefon töltő" returns two solutions, each with its own reasoning.
+		 "régi telefontöltő": "A »régi« melléknevet és a »telefontöltő« főnevet különírjuk az alábbi szabály alapján: A minőségjelzős kapcsolatok tagjait általában különírjuk egymástól."
+		 "régitelefon-töltő": "A »régi telefon« főnévi szerkezetet és a »töltő« főnevet kötőjellel írjuk, és az első szerkezetet egybeírjuk (összerántjuk) az alábbi szabály alapján: Ha egy különírt szókapcsolat (»régi telefon«) olyan utótagot kap, amely az egészhez járul, az egyébként különírandó előrészt az új alakulatban egybeírjuk, és ehhez az utótagot (a szótagszámtól függetlenül) kötőjellel kapcsoljuk."
+		 Thinking: the branches differ by where the seam falls. "régitelefon-töltő" splits as "régi telefon" | "töltő" and means a charger for old phones; in "régi telefontöltő" there is no seam there at all, and "régi" is simply the minőségjelző of "telefontöltő". Step 4 could not settle which was meant, and both readings require joining "telefon töltő" anyway, so leaving it alone is not on offer. When a single correct version cannot be determined, take the commoner reading: an old telefontöltő is the everyday one, so that is what gets written. Note "a szótagszámtól függetlenül" in the other branch - had it won, its hyphen would have come from the structure, not from a syllable count.
+		 Parts: "régi " (original), "telefontöltő" (corrected)
 
 		 Input: "tely"
 		 Tools: helyes-e_igy on "tely" -> "tej"
