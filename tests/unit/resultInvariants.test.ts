@@ -7,6 +7,7 @@ type PartInput = [text: string, type: Result['resultParts'][number]['type']];
 function result(...parts: PartInput[]): Result {
 	return {
 		error: '',
+		alternatives: [],
 		resultParts: parts.map(([text, type]) => ({ text, type, explanation: '', references: [] }))
 	};
 }

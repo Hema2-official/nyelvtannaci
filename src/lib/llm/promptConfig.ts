@@ -28,12 +28,24 @@ const resultPartType = z.object({
 	references: z.array(z.string()).describe('Corresponding references, if any')
 });
 
+const alternativeType = z.object({
+	text: z.string().describe('The whole corrected text as it reads under this interpretation'),
+	meaning: z
+		.string()
+		.describe('Plain Hungarian for what the text means read this way, so the user can choose')
+});
+
 export const resultType = z.object({
 	error: z.string().describe('Error message if correction failed, empty otherwise'),
 	resultParts: z
 		.array(resultPartType)
 		.describe(
 			'The corrected text in split form, with the immediately joined form of these parts being the corrected text in its entirety.'
+		),
+	alternatives: z
+		.array(alternativeType)
+		.describe(
+			'The other readings, when the input is genuinely ambiguous and more than one correct version exists. Empty in every other case, which is most of them. Never repeats the reading already in resultParts.'
 		)
 });
 
@@ -115,7 +127,8 @@ export const developerPrompt = [
 		 Quote explanations and references from the tools in Hungarian, verbatim, and only from the explanation branch you accepted. Never invent references, and never translate them.
 		 elvalasztas is the exception: it answers in a notation, not in prose. Count with it and write down what you counted ("három tagból áll, hét szótag"), never the raw "mun-ka|-e-rő|-pi-a-ci"; the reader has no idea what the bars mean.
 		 When you apply a correction, carry over the capitalisation of the original text, as long as it stays correct.
-		 Fill the error field only if the correction could not be produced at all; otherwise leave it empty.`
+		 Fill the error field only if the correction could not be produced at all; otherwise leave it empty.
+		 Leave alternatives empty unless the input really does have more than one correct reading and the text cannot say which was meant - the "régi telefon töltő" case, not a case where you are merely unsure. When it does, resultParts carries the reading you chose and alternatives carries each of the others as a whole corrected text with the plain-Hungarian meaning that distinguishes it, so the reader can pick the one they meant.`
 	],
 	[
 		'Examples',
@@ -158,6 +171,7 @@ export const developerPrompt = [
 		 "régitelefon-töltő": "A »régi telefon« főnévi szerkezetet és a »töltő« főnevet kötőjellel írjuk, és az első szerkezetet egybeírjuk (összerántjuk) az alábbi szabály alapján: Ha egy különírt szókapcsolat (»régi telefon«) olyan utótagot kap, amely az egészhez járul, az egyébként különírandó előrészt az új alakulatban egybeírjuk, és ehhez az utótagot (a szótagszámtól függetlenül) kötőjellel kapcsoljuk."
 		 Thinking: the branches differ by where the seam falls. "régitelefon-töltő" splits as "régi telefon" | "töltő" and means a charger for old phones; in "régi telefontöltő" there is no seam there at all, and "régi" is simply the minőségjelző of "telefontöltő". Step 4 could not settle which was meant, and both readings require joining "telefon töltő" anyway, so leaving it alone is not on offer. When a single correct version cannot be determined, take the commoner reading: an old telefontöltő is the everyday one, so that is what gets written. Note "a szótagszámtól függetlenül" in the other branch - had it won, its hyphen would have come from the structure, not from a syllable count.
 		 Parts: "régi " (original), "telefontöltő" (corrected)
+		 Alternatives: text "régitelefon-töltő", meaning "töltő, amely régi telefonokhoz való"
 
 		 Input: "tely"
 		 Tools: helyes-e_igy on "tely" -> "tej"

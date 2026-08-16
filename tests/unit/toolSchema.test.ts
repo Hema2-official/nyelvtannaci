@@ -22,7 +22,7 @@ describe('toParameterSchema', () => {
 
 		expect(schema.$schema).toBeUndefined();
 		expect(schema.additionalProperties).toBe(false);
-		expect(schema.required).toEqual(['error', 'resultParts']);
+		expect(schema.required).toEqual(['error', 'resultParts', 'alternatives']);
 
 		const part = at(schema, 'properties', 'resultParts', 'items');
 		expect(part.additionalProperties).toBe(false);

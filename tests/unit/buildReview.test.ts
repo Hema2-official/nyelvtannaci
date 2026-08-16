@@ -4,6 +4,7 @@ import type { Result } from '$lib/llm/promptConfig';
 
 const result: Result = {
 	error: '',
+	alternatives: [],
 	resultParts: [
 		{ text: 'A ', type: 'original', explanation: '', references: [] },
 		{ text: 'kutatóintézet', type: 'corrected', explanation: 'egybeírandó', references: [] },
