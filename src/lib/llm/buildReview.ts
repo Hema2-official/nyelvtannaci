@@ -1,5 +1,5 @@
 import type { Result } from './promptConfig';
-import { joinParts } from './resultInvariants';
+import { joinParts } from '../logic/resultInvariants';
 
 /**
  * The last turn: the model reads its own answer as text.

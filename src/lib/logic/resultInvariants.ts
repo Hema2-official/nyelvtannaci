@@ -1,4 +1,4 @@
-import type { Result } from './promptConfig';
+import type { Result } from '../llm/promptConfig';
 
 /**
  * Everything below is decidable from the input and the parts, so none of it needs a model
