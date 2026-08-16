@@ -51,6 +51,24 @@ class LLMSession<ResultType extends ZodType> {
 	#resultType: ResultType;
 	#result?: z.infer<ResultType>;
 
+	/** Mechanical checks on a well-formed result, applied before it is accepted. */
+	#resultValidator: ((result: z.infer<ResultType>) => string | undefined) | undefined;
+
+	/**
+	 * A rejected result costs a turn, and a model that cannot satisfy the checks would spend
+	 * every one of them. After this many rejections the answer is taken as it stands.
+	 */
+	#rejectionsLeft = 2;
+
+	/**
+	 * The model emits parts and never reads their concatenation, so the text the reader will
+	 * actually see is the one thing it has not checked. This shows it once, at the end.
+	 */
+	#buildReview: ((result: z.infer<ResultType>) => string) | undefined;
+	#reviewDone = false;
+	/** The reviewed-from answer, kept so a session that runs out of turns still returns one. */
+	#pendingResult?: z.infer<ResultType>;
+
 	constructor(instructions: string, resultType: ResultType) {
 		this.id = randomUUID();
 		this.#resultType = resultType;
@@ -76,6 +94,39 @@ class LLMSession<ResultType extends ZodType> {
 		this.#intermediateCallback = callback;
 	}
 
+	setResultValidator(validator: (result: z.infer<ResultType>) => string | undefined) {
+		this.#resultValidator = validator;
+	}
+
+	setReviewBuilder(build: (result: z.infer<ResultType>) => string) {
+		this.#buildReview = build;
+	}
+
+	/**
+	 * Accepts the result, or says what has to happen first. A rejection and a review are
+	 * different events and are reported as different statuses: told only that its answer was
+	 * "not accepted", the model reads a review as a refusal and goes hunting for a fault that
+	 * is not there - observed turning "tej" into "telyj".
+	 */
+	#tryAcceptResult(
+		candidate: z.infer<ResultType>
+	): { status: 'rejected'; problem: string } | { status: 'confirm'; review: string } | undefined {
+		const problem = this.#resultValidator?.(candidate);
+		if (problem && this.#rejectionsLeft > 0) {
+			this.#rejectionsLeft--;
+			return { status: 'rejected', problem };
+		}
+
+		if (this.#buildReview && !this.#reviewDone) {
+			this.#reviewDone = true;
+			this.#pendingResult = candidate;
+			return { status: 'confirm', review: this.#buildReview(candidate) };
+		}
+
+		this.#result = candidate;
+		return undefined;
+	}
+
 	async getResult() {
 		const { strictTools, structuredOutputs, maxTurns } = getProvider();
 
@@ -88,7 +139,11 @@ class LLMSession<ResultType extends ZodType> {
 
 		// One turn is one model response: either a batch of tool calls or the final answer
 		for (let turn = 0; turn < maxTurns && this.#result === undefined; turn++) {
-			const message = await this.#complete(tools, responseFormat);
+			// the review turn is for reading, not for re-querying: only the result tool is offered
+			const turnTools = this.#reviewDone
+				? tools.filter((tool) => tool.type === 'function' && tool.function.name === RESULT_TOOL_NAME)
+				: tools;
+			const message = await this.#complete(turnTools, responseFormat);
 			this.addMessage(message);
 
 			if (message.tool_calls?.length) {
@@ -103,6 +158,9 @@ class LLMSession<ResultType extends ZodType> {
 				});
 			}
 		}
+
+		// a session that reviewed but never re-submitted still has an answer worth returning
+		if (this.#result === undefined) this.#result = this.#pendingResult;
 
 		if (this.#result === undefined)
 			throw new Error(`No result returned from the model within ${maxTurns} turns`);
@@ -177,7 +235,16 @@ class LLMSession<ResultType extends ZodType> {
 	/** A turn without tool calls is the final answer, constrained to the result schema. */
 	#acceptResult(content: string | null) {
 		try {
-			this.#result = this.#resultType.parse(JSON.parse(stripCodeFence(content ?? '')));
+			const candidate = this.#resultType.parse(JSON.parse(stripCodeFence(content ?? '')));
+			const outcome = this.#tryAcceptResult(candidate);
+			if (outcome)
+				this.addMessage({
+					role: 'user',
+					content:
+						outcome.status === 'rejected'
+							? `${outcome.problem} Send the result again.`
+							: outcome.review
+				});
 		} catch (error: unknown) {
 			console.error(error);
 			this.addMessage({
@@ -198,14 +265,17 @@ class LLMSession<ResultType extends ZodType> {
 		};
 	}
 
-	#resultFunction(): LLMFunction<ResultType, { accepted: true }> {
+	#resultFunction(): LLMFunction<
+		ResultType,
+		{ status: 'accepted' } | { status: 'rejected'; problem: string } | { status: 'confirm'; review: string }
+	> {
 		return {
 			name: RESULT_TOOL_NAME,
 			description: 'Return the final result of the check. Call this exactly once, at the very end.',
 			parameters: this.#resultType,
 			callback: async (args: z.infer<ResultType>) => {
-				this.#result = args;
-				return { accepted: true };
+				// what comes back goes through this tool's own output, which is where the model is looking
+				return this.#tryAcceptResult(args) ?? { status: 'accepted' as const };
 			}
 		};
 	}
