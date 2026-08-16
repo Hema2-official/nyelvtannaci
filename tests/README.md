@@ -80,6 +80,14 @@ Useful knobs: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_REASONING_EFFORT`, `LLM_STRUCTUR
 `SESSION_MAX_TURNS`, and `BENCH_REPEATS=3` to run every case N times when you care about
 variance rather than a single sample.
 
+`BENCH_CASES` runs only the cases whose name contains one of the listed strings, which is what
+makes a sweep across models affordable — the full suite against 25 models is hours, six cases
+against 25 models is not:
+
+```bash
+BENCH_CASES=tely,Ethernet,worksheet npx vitest run tests/e2e/correction.test.ts
+```
+
 Each run writes `bench-results/<provider>_<model>_<effort>_<timestamp>.json` (gitignored)
 containing every run's timing, tool-call count, the queries the model sent, and what it
 produced — plus a `promptSha`, so a result can be tied to the prompt version it was measured
