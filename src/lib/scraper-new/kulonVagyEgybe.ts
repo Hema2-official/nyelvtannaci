@@ -1,7 +1,7 @@
 import { parse } from 'node-html-parser';
 import { MTA_BASE_URL } from '$env/static/private';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
-import scraperAxios from './scraperAxios';
+import scraperAxios, { getCached } from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
@@ -38,9 +38,8 @@ export async function scrapeKulonVagyEgybe(
 	if (!input) throw new Error('Input is required');
 	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
 
-	const response = await scraperAxios.get<string>(generateUrl(input));
-
-	const doc = parse(response.data);
+	const html = await getCached(generateUrl(input));
+	const doc = parse(html);
 
 	// error cases:
 	//  - contains .result.error

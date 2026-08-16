@@ -1,6 +1,6 @@
 import { MTA_BASE_URL } from '$env/static/private';
 import { parse } from 'node-html-parser';
-import scraperAxios from './scraperAxios';
+import scraperAxios, { getCached } from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
@@ -32,8 +32,8 @@ export async function scrapeSzamok(args: z.infer<typeof szamokParams>): Promise<
 			'A számot számjegyekkel kell megadni; előjel, pont, perjel és tizedesvessző szerepelhet benne'
 		);
 
-	const response = await scraperAxios.get<string>(generateUrl(input));
-	const doc = parse(response.data);
+	const html = await getCached(generateUrl(input));
+	const doc = parse(html);
 
 	const error = akhErrorMessage(doc);
 	if (error) throw new Error(error);
