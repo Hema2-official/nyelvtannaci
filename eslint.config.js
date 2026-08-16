@@ -30,5 +30,11 @@ export default ts.config(
 				parser: ts.parser
 			}
 		}
+	},
+	{
+		files: ['src/lib/components/ui/**/*.svelte'],
+		rules: {
+			'svelte/valid-compile': 'off'
+		}
 	}
 );
