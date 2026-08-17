@@ -28,7 +28,9 @@ const only = (process.env.BENCH_CASES ?? '')
 	.filter(Boolean);
 
 const selectedCases = only.length
-	? correctionCases.filter((testCase) => only.some((name) => testCase.name.toLowerCase().includes(name)))
+	? correctionCases.filter((testCase) =>
+			only.some((name) => testCase.name.toLowerCase().includes(name))
+		)
 	: correctionCases;
 
 if (selectedCases.length === 0) throw new Error(`BENCH_CASES matched no case: ${only.join(', ')}`);

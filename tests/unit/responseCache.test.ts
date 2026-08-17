@@ -45,7 +45,9 @@ describe('ResponseCache', () => {
 
 	it('lets a failed load through and does not cache it', async () => {
 		const cache = new ResponseCache<string>();
-		await expect(cache.fetch('a', async () => Promise.reject(new Error('500')))).rejects.toThrow('500');
+		await expect(cache.fetch('a', async () => Promise.reject(new Error('500')))).rejects.toThrow(
+			'500'
+		);
 		expect(await cache.fetch('a', async () => 'recovered')).toBe('recovered');
 	});
 
