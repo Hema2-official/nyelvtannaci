@@ -20,6 +20,9 @@ importers:
       openai:
         specifier: ^7.4.0
         version: 7.4.0(ws@8.21.3)(zod@4.4.3)
+      runed:
+        specifier: ^0.37.1
+        version: 0.37.1(@sveltejs/kit@2.70.2(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(zod@4.4.3)
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -1910,6 +1913,18 @@ packages:
       svelte: ^5.7.0
     peerDependenciesMeta:
       '@sveltejs/kit':
+        optional: true
+
+  runed@0.37.1:
+    resolution: {integrity: sha512-MeFY73xBW8IueWBm012nNFIGy19WUGPLtknavyUPMpnyt350M47PhGSGrGoSLbidwn+Zlt/O0cp8/OZE3LASWA==}
+    peerDependencies:
+      '@sveltejs/kit': ^2.21.0
+      svelte: ^5.7.0
+      zod: ^4.1.0
+    peerDependenciesMeta:
+      '@sveltejs/kit':
+        optional: true
+      zod:
         optional: true
 
   sade@1.8.1:
@@ -3839,6 +3854,16 @@ snapshots:
       svelte: 5.56.8(@typescript-eslint/types@8.66.0)
     optionalDependencies:
       '@sveltejs/kit': 2.70.2(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+
+  runed@0.37.1(@sveltejs/kit@2.70.2(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(zod@4.4.3):
+    dependencies:
+      dequal: 2.0.3
+      esm-env: 1.2.2
+      lz-string: 1.5.0
+      svelte: 5.56.8(@typescript-eslint/types@8.66.0)
+    optionalDependencies:
+      '@sveltejs/kit': 2.70.2(@sveltejs/vite-plugin-svelte@5.1.1(supports-color@7.2.0)(svelte@5.56.8(@typescript-eslint/types@8.66.0))(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0)))(svelte@5.56.8(@typescript-eslint/types@8.66.0))(typescript@5.9.3)(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.32.0))
+      zod: 4.4.3
 
   sade@1.8.1:
     dependencies:
