@@ -1,4 +1,4 @@
-import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import LLMSession from './LLMSession';
 import { availableFunctions, developerPrompt, resultType, type Result } from './promptConfig';
 import checkResultInvariants from '../logic/resultInvariants';

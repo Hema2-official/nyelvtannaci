@@ -9,7 +9,7 @@ import type {
 	ResponseFormatJSONSchema
 } from 'openai/resources/index.mjs';
 import type { LLMFunction } from './llmFunction.type';
-import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import getProvider from './provider';
 import { toChatCompletionTool, toParameterSchema } from './toolSchema';
 
@@ -141,7 +141,9 @@ class LLMSession<ResultType extends ZodType> {
 		for (let turn = 0; turn < maxTurns && this.#result === undefined; turn++) {
 			// the review turn is for reading, not for re-querying: only the result tool is offered
 			const turnTools = this.#reviewDone
-				? tools.filter((tool) => tool.type === 'function' && tool.function.name === RESULT_TOOL_NAME)
+				? tools.filter(
+						(tool) => tool.type === 'function' && tool.function.name === RESULT_TOOL_NAME
+					)
 				: tools;
 			const message = await this.#complete(turnTools, responseFormat);
 			this.addMessage(message);
@@ -267,7 +269,9 @@ class LLMSession<ResultType extends ZodType> {
 
 	#resultFunction(): LLMFunction<
 		ResultType,
-		{ status: 'accepted' } | { status: 'rejected'; problem: string } | { status: 'confirm'; review: string }
+		| { status: 'accepted' }
+		| { status: 'rejected'; problem: string }
+		| { status: 'confirm'; review: string }
 	> {
 		return {
 			name: RESULT_TOOL_NAME,

@@ -2,7 +2,7 @@ import { MTA_BASE_URL } from '$env/static/private';
 import { parse } from 'node-html-parser';
 import scraperAxios, { getCached } from './scraperAxios';
 import { z } from 'zod';
-import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
 
 export const elvalasztasParams = z.object({

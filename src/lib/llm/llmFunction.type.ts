@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { IntermediateSummary } from '$lib/UI/toolSummary.type';
+import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 
 /** A tool the model may call during a session. */
 export type LLMFunction<Params extends z.ZodType, ToolResult> = {
