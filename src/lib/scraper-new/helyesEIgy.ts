@@ -93,17 +93,18 @@ function provideSummary(
 	results: HelyesEIgyResult[]
 ): IntermediateSummary[] {
 	return results.map((result) => ({
+		tool: 'helyes-e_igy',
 		expression: result.expression,
 		correct: result.correct,
 		shareLink: generateUrl(args.input)
 	}));
 }
 
-export const helyesEIgyFunction: LLMFunction<typeof helyesEIgyParams, HelyesEIgyResult[]> = {
-	name: 'helyes-e_igy',
+export const helyesEIgyFunction = {
+	name: 'helyes-e_igy' as const,
 	description:
 		'Szóalak helyességének vizsgálata (pl. mássalhangzó-, magánhangzó-hosszúság, ly/j használata), helytelen alakhoz helyes alakok javaslata.',
 	parameters: helyesEIgyParams,
 	callback: scrapeHelyesEIgy,
 	summarize: provideSummary
-};
+} satisfies LLMFunction<typeof helyesEIgyParams, HelyesEIgyResult[]>;

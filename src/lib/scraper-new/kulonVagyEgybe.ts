@@ -138,6 +138,7 @@ function provideSummary(
 	results: KulonVagyEgybeResult[]
 ): IntermediateSummary[] {
 	return results.map((result) => ({
+		tool: 'kulon_vagy_egybe',
 		query: args.input.trim(),
 		expression: result.solution,
 		correct: undefined,
@@ -146,14 +147,11 @@ function provideSummary(
 	}));
 }
 
-export const kulonVagyEgybeFunction: LLMFunction<
-	typeof kulonVagyEgybeParams,
-	KulonVagyEgybeResult[]
-> = {
-	name: 'kulon_vagy_egybe',
+export const kulonVagyEgybeFunction = {
+	name: 'kulon_vagy_egybe' as const,
 	description:
 		'A megadott szavak vizsgálata és javaslattétel arra, hogy hogyan lehet őket leírni (külön, egybe vagy kötőjellel).',
 	parameters: kulonVagyEgybeParams,
 	callback: scrapeKulonVagyEgybe,
 	summarize: provideSummary
-};
+} satisfies LLMFunction<typeof kulonVagyEgybeParams, KulonVagyEgybeResult[]>;

@@ -11,7 +11,9 @@ export const availableFunctions = [
 	elvalasztasFunction,
 	datumokFunction,
 	szamokFunction
-];
+] as const;
+
+export type AvailableFunctionName = (typeof availableFunctions)[number]['name'];
 
 const resultPartType = z.object({
 	text: z.string(),

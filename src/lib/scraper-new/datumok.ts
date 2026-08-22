@@ -48,6 +48,7 @@ function provideSummary(
 	// own row would bury everything else in the analysis.
 	return [
 		{
+			tool: 'datumok',
 			query: args.input.trim(),
 			expression: results[0].form,
 			correct: undefined,
@@ -59,11 +60,11 @@ function provideSummary(
 	];
 }
 
-export const datumokFunction: LLMFunction<typeof datumokParams, DatumokResult[]> = {
-	name: 'datumok',
+export const datumokFunction = {
+	name: 'datumok' as const,
 	description:
 		'Egy dátum helyesen leírható alakjai, a toldalékos formákkal együtt (pl. „2024. január 1.”, „1-je”, „1-jén”, „1-jei”, „1-jéig”). A bemenet ÉÉÉÉ-HH-NN alakú, a válasz az összes elfogadható alakot felsorolja.',
 	parameters: datumokParams,
 	callback: scrapeDatumok,
 	summarize: provideSummary
-};
+} satisfies LLMFunction<typeof datumokParams, DatumokResult[]>;

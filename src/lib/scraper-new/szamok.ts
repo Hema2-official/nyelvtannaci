@@ -49,6 +49,7 @@ function provideSummary(
 ): IntermediateSummary[] {
 	return [
 		{
+			tool: 'szamok',
 			query: args.input.trim(),
 			expression: results[0].form,
 			correct: undefined,
@@ -60,11 +61,11 @@ function provideSummary(
 	];
 }
 
-export const szamokFunction: LLMFunction<typeof szamokParams, SzamokResult[]> = {
-	name: 'szamok',
+export const szamokFunction = {
+	name: 'szamok' as const,
 	description:
 		'Egy szám betűvel leírt alakjai (pl. 2024 -> „kétezer-huszonnégy”), tizedes törtekkel és törtekkel együtt. A bemenet számjegyekkel írandó; a válasz megjelöli, ha egy alak nem sztenderd, vagy csak jelzői helyzetben használatos.',
 	parameters: szamokParams,
 	callback: scrapeSzamok,
 	summarize: provideSummary
-};
+} satisfies LLMFunction<typeof szamokParams, SzamokResult[]>;

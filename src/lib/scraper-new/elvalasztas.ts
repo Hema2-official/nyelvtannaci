@@ -53,6 +53,7 @@ function provideSummary(
 	results: ElvalasztasResult[]
 ): IntermediateSummary[] {
 	return results.map((result) => ({
+		tool: 'elvalasztas',
 		query: args.input.trim(),
 		expression: result,
 		correct: undefined,
@@ -60,11 +61,11 @@ function provideSummary(
 	}));
 }
 
-export const elvalasztasFunction: LLMFunction<typeof elvalasztasParams, ElvalasztasResult[]> = {
-	name: 'elvalasztas',
+export const elvalasztasFunction = {
+	name: 'elvalasztas' as const,
 	description:
 		'Szavak elválasztása a magyar helyesírás szabályai szerint. (A kimenetben a "-"-jel a lehetséges elválasztási határokat, a "|-"-jel az elválasztási határokat és egyben szóösszetételi határokat jelöli.)',
 	parameters: elvalasztasParams,
 	callback: scrapeElvalasztas,
 	summarize: provideSummary
-};
+} satisfies LLMFunction<typeof elvalasztasParams, ElvalasztasResult[]>;
