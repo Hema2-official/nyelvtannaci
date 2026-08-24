@@ -38,6 +38,7 @@ describe.sequential('POST /api/check', () => {
 		const events = await readEvents(response);
 		const names = events.map(([event]) => event);
 
+		expect(names).toContain('init');
 		expect(names).toContain('intermediate');
 		expect(names.filter((name) => name === 'result')).toHaveLength(1);
 		expect(names).not.toContain('error');
@@ -50,7 +51,8 @@ describe.sequential('POST /api/check', () => {
 		const parsed = JSON.parse(result) as Result;
 		expect(parsed.resultParts.map((part) => part.text).join('')).toBe('tej');
 
-		// intermediates have to arrive before the result, or the UI shows them after the fact
+		// init has to arrive before intermediates, and intermediates before the result
+		expect(names.indexOf('init')).toBeLessThan(names.indexOf('intermediate'));
 		expect(names.indexOf('intermediate')).toBeLessThan(names.indexOf('result'));
 	}, 600_000);
 

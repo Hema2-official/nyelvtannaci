@@ -6,14 +6,17 @@ import buildReview from './buildReview';
 import splitSentences from '../logic/splitSentences';
 import mergeChunkResults, { originalPart } from '../logic/mergeChunkResults';
 
+type InitCallback = () => Promise<void> | void;
 type IntermediateCallback = (summary: IntermediateSummary[]) => Promise<void>;
 
-const defaultCallback: IntermediateCallback = async (sum) => console.log(sum);
+const defaultCallback: IntermediateCallback & InitCallback = async (data?) =>
+	console.log(data ?? 'init');
 
 /** One text, one session, one result. */
 export async function runSingleSession(
 	input: string,
-	intermediateCallback: IntermediateCallback = defaultCallback
+	intermediateCallback: IntermediateCallback = defaultCallback,
+	initCallback: InitCallback = defaultCallback
 ): Promise<Result> {
 	const session = new LLMSession(developerPrompt, resultType.required());
 
@@ -31,6 +34,8 @@ export async function runSingleSession(
 
 	if (process.env.SESSION_REVIEW === 'on')
 		session.setReviewBuilder((result) => buildReview(input, result));
+
+	await initCallback?.();
 
 	return (await session.getResult()) as Result;
 }
@@ -55,11 +60,13 @@ async function mapWithLimit<T, R>(items: T[], limit: number, run: (item: T) => P
 export async function runChunkedSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
+	initCallback: InitCallback = defaultCallback,
 	concurrency = 3
 ): Promise<Result> {
 	const chunks = splitSentences(input);
-	if (chunks.length <= 1) return runSingleSession(input, intermediateCallback);
+	if (chunks.length <= 1) return runSingleSession(input, intermediateCallback, initCallback);
 
+	await initCallback?.();
 	const results = await mapWithLimit(chunks, concurrency, async (chunk) => {
 		try {
 			return await runSingleSession(chunk.text, intermediateCallback);
@@ -78,9 +85,10 @@ export async function runChunkedSession(
 
 export default async function runSession(
 	input: string,
-	intermediateCallback: IntermediateCallback = defaultCallback
+	intermediateCallback: IntermediateCallback = defaultCallback,
+	initCallback: InitCallback = defaultCallback
 ): Promise<Result> {
 	return process.env.PARALLEL_SENTENCES === 'on'
-		? runChunkedSession(input, intermediateCallback)
-		: runSingleSession(input, intermediateCallback);
+		? runChunkedSession(input, intermediateCallback, initCallback)
+		: runSingleSession(input, intermediateCallback, initCallback);
 }

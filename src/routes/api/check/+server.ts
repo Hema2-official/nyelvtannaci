@@ -21,9 +21,11 @@ export const POST: RequestHandler = async ({ request }) => {
 				};
 
 				try {
-					const result = await runSession(input, async (summary) => {
-						sendEvent('intermediate', summary);
-					});
+					const result = await runSession(
+						input,
+						async (summary) => sendEvent('intermediate', summary),
+						async () => sendEvent('init', 'hi')
+					);
 					sendEvent('result', result);
 				} catch (error: unknown) {
 					console.error(error);
