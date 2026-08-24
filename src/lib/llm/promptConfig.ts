@@ -52,6 +52,7 @@ export const resultType = z.object({
 });
 
 export type Result = z.infer<typeof resultType>;
+export type SuccessfulResult = Result & { error: '' };
 
 export const developerPrompt = [
 	[
