@@ -14,6 +14,7 @@
 	let { result, isDesktop }: Props = $props();
 
 	const hasCorrections = $derived(result.resultParts.some((p) => p.type !== 'original'));
+	const hasExplanations = $derived(result.resultParts.some((p) => p.explanation));
 
 	const TYPE_STYLES = {
 		original: {
@@ -164,6 +165,18 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 			<CheckIcon class="size-6 text-correct" />
 			Minden rendben
 		</span>
+
+		{#if hasExplanations}
+			<Label class="mt-4 text-lg text-muted-foreground">Magyarázat</Label>
+			{#each result.resultParts as part}
+				{#if part.explanation}
+					<p class="mt-2">
+						{#if result.resultParts.length > 1}<span>„{part.text}”: </span>{/if}
+						{part.explanation}
+					</p>
+				{/if}
+			{/each}
+		{/if}
 	{/if}
 </div>
 
