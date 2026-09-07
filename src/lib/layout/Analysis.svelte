@@ -16,15 +16,20 @@
 	watch([() => summaries.length, () => scrollAreaRef], () => {
 		groupScroll.scrollToBottom();
 	});
+
+	function summaryHash(summary: IntermediateSummary | null, index: number): string {
+		if (summary === null) return 'null' + index;
+		return `${summary.tool}:${summary.expression}:${summary.query}`;
+	}
 </script>
 
 <Tooltip.Provider delayDuration={400}>
 	<ScrollArea type="always" class="max-h-[60dvh]" bind:viewportRef={scrollAreaRef}>
 		<Item.Group class="gap-0!">
-			{#each [...summaries, ...(loading ? [null] : [])] as summary, index (index)}
+			{#each [...summaries, ...(loading ? [null] : [])] as summary, index (summaryHash(summary, index))}
 				<SummaryItem {summary} />
 				{#if index < summaries.length - 1 + (loading ? 1 : 0)}
-					<div transition:fly={{ y: -4 }}><Item.Separator /></div>
+					<div in:fly={{ y: -4 }}><Item.Separator /></div>
 				{/if}
 			{/each}
 		</Item.Group>

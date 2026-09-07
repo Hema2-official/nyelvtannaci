@@ -51,7 +51,7 @@
 	{/if}
 {/snippet}
 
-<div class="flex w-full" transition:fly={{ y: -10 }}>
+<div class="flex w-full" in:fly={{ y: -10 }}>
 	<Item.Root size="sm">
 		<Item.Media>
 			<Tooltip.Root disabled={!summary}>
