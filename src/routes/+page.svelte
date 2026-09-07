@@ -5,16 +5,14 @@
 	import type { Result, SuccessfulResult } from '$lib/llm/promptConfig';
 	import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 	import { parseServerSentEvents } from 'parse-sse';
-	import { resource } from 'runed';
-	import { fade } from 'svelte/transition';
+	import { resource, watch } from 'runed';
+	import { fly } from 'svelte/transition';
 	import ResultDisplay from '$lib/layout/ResultDisplay.svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import InputSection from '$lib/layout/InputSection.svelte';
 	import { cn } from '$lib/utils/shadcn';
-
-	let input = $state('');
-	let showAnalysis = $state(false);
-	let intermediateSummaries: IntermediateSummary[] = $state([]);
+	import { viewState } from '$lib/states/ViewState.svelte';
+	import { historyDb } from '$lib/utils/history.svelte';
 
 	// Tailwind 'lg:' matching breakpoint
 	const isDesktop = new MediaQuery('(min-width: 64rem)');
@@ -22,19 +20,23 @@
 	const checkResource = resource(
 		[],
 		async (_, __, { signal }) => {
-			intermediateSummaries = [];
+			viewState.clearSession();
+			const input = $state.snapshot(viewState.currentInput);
 			const response = await check(input, { signal });
 
 			for await (const event of parseServerSentEvents(response)) {
 				if (event.type === 'init') {
-					showAnalysis = true;
+					viewState.showAnalysis = true;
 				} else if (event.type === 'intermediate') {
 					const summaries = JSON.parse(event.data) as IntermediateSummary[];
-					intermediateSummaries = [...intermediateSummaries, ...summaries];
+					viewState.appendSummaries(summaries);
 				} else if (event.type === 'result') {
 					const result = JSON.parse(event.data) as Result;
 					if (result.error) throw new Error(result.error);
-					return result as SuccessfulResult;
+					const successfulResult = result as SuccessfulResult;
+					const intermediateSummaries = $state.snapshot(viewState.intermediateSummaries);
+					historyDb.addEntry(input, successfulResult, intermediateSummaries);
+					return successfulResult;
 				} else if (event.type === 'error') {
 					throw new Error(JSON.parse(event.data));
 				}
@@ -42,31 +44,36 @@
 		},
 		{ lazy: true }
 	);
+
+	// Move result to ViewState for central management
+	watch([() => checkResource.current], () => {
+		viewState.currentResult = checkResource.current ?? null;
+	});
 </script>
 
 <div
 	class="flex w-full flex-col justify-center p-12 transition-[gap] duration-400 lg:flex-row
-		{showAnalysis ? 'gap-8' : 'gap-0'}"
+		{viewState.showAnalysis ? 'gap-8' : 'gap-0'}"
 >
 	<div
 		class={cn(`flex flex-1 flex-col transition-all duration-400
-			${showAnalysis ? (checkResource.loading ? 'lg:flex-3' : 'lg:flex-4') : ''}`)}
+			${viewState.showAnalysis ? (checkResource.loading ? 'lg:flex-3' : 'lg:flex-4') : ''}`)}
 	>
-		<InputSection bind:input {checkResource} />
+		<InputSection {checkResource} />
 
-		{#if checkResource.current && !checkResource.loading}
-			<ResultDisplay result={checkResource.current} {isDesktop} />
+		{#if viewState.currentResult && !checkResource.loading}
+			<ResultDisplay result={viewState.currentResult} {isDesktop} />
 		{/if}
 	</div>
 
 	<div
 		class={cn(`flex flex-1 overflow-visible! transition-all duration-400
-			${showAnalysis ? (checkResource.loading ? 'lg:flex-4' : 'lg:flex-3') : 'flex-0'}`)}
+			${viewState.showAnalysis ? (checkResource.loading ? 'lg:flex-4' : 'lg:flex-3') : 'flex-0'}`)}
 	>
-		{#if showAnalysis}
-			<div class="flex w-full flex-col gap-2" in:fade>
+		{#if viewState.showAnalysis}
+			<div class="flex w-full flex-col gap-2" in:fly={{ delay: 100, x: 40 }}>
 				<Label class="text-lg text-muted-foreground">Elemzés</Label>
-				<Analysis summaries={intermediateSummaries} loading={checkResource.loading} />
+				<Analysis summaries={viewState.intermediateSummaries} loading={checkResource.loading} />
 			</div>
 		{/if}
 	</div>

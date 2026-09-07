@@ -6,17 +6,18 @@
 	import * as Kbd from '$lib/components/ui/kbd';
 	import { TextareaAutosize, type ResourceReturn } from 'runed';
 	import type { SuccessfulResult } from '$lib/llm/promptConfig';
+	import { viewState } from '$lib/states/ViewState.svelte';
 
-	type Props = {
-		input: string;
-		checkResource: ResourceReturn<SuccessfulResult, unknown, false>;
-	};
-	let { input = $bindable(''), checkResource }: Props = $props();
+	type Props = { checkResource: ResourceReturn<SuccessfulResult, unknown, false> };
+	let { checkResource }: Props = $props();
 
 	let textareaRef: HTMLTextAreaElement | null = $state(null);
-	new TextareaAutosize({ element: () => textareaRef ?? undefined, input: () => input });
+	new TextareaAutosize({
+		element: () => textareaRef ?? undefined,
+		input: () => viewState.currentInput
+	});
 
-	let allowSubmit = $derived(input.length > 0 && !checkResource.loading);
+	let allowSubmit = $derived(viewState.currentInput.length > 0 && !checkResource.loading);
 
 	function handleSubmit() {
 		if (!allowSubmit) return;
@@ -37,7 +38,7 @@
 		id="input-editor"
 		class="max-h-[40dvh] min-h-36 w-full resize-none border-none px-3 py-2.5 text-base! outline-none"
 		bind:ref={textareaRef}
-		bind:value={input}
+		bind:value={viewState.currentInput}
 		disabled={checkResource.loading}
 		onkeydown={handleKeydown}
 	/>
