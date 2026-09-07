@@ -2,7 +2,7 @@
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import { RotateCcwClockIcon } from '@lucide/svelte';
+	import { RotateCcwClockIcon, SquarePenIcon } from '@lucide/svelte';
 	import { historyDb } from '$lib/utils/history.svelte';
 	import { viewState } from '$lib/states/ViewState.svelte';
 
@@ -13,6 +13,13 @@
 
 <Sidebar.Group>
 	<Sidebar.Menu>
+		<Sidebar.MenuItem>
+			<Sidebar.MenuButton onclick={() => viewState.resetSession()}>
+				<SquarePenIcon />
+				<span>Tiszta lap</span>
+			</Sidebar.MenuButton>
+		</Sidebar.MenuItem>
+
 		<Collapsible.Root bind:open class="group/collapsible">
 			{#snippet child({ props })}
 				<Sidebar.MenuItem {...props}>
