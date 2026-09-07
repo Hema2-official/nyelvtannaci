@@ -69,9 +69,13 @@ class LLMSession<ResultType extends ZodType> {
 	/** The reviewed-from answer, kept so a session that runs out of turns still returns one. */
 	#pendingResult?: z.infer<ResultType>;
 
-	constructor(instructions: string, resultType: ResultType) {
+	/** Set when the caller is gone; the session stops at the next opportunity. */
+	#signal?: AbortSignal;
+
+	constructor(instructions: string, resultType: ResultType, signal?: AbortSignal) {
 		this.id = randomUUID();
 		this.#resultType = resultType;
+		this.#signal = signal;
 
 		const { systemRole, structuredOutputs } = getProvider();
 		this.#messages.push({
@@ -139,6 +143,7 @@ class LLMSession<ResultType extends ZodType> {
 
 		// One turn is one model response: either a batch of tool calls or the final answer
 		for (let turn = 0; turn < maxTurns && this.#result === undefined; turn++) {
+			this.#signal?.throwIfAborted();
 			// the review turn is for reading, not for re-querying: only the result tool is offered
 			const turnTools = this.#reviewDone
 				? tools.filter(
@@ -176,14 +181,18 @@ class LLMSession<ResultType extends ZodType> {
 	) {
 		const { client, model, reasoningEffort } = getProvider();
 
-		const completion = await client.chat.completions.create({
-			messages: this.#messages,
-			model: model,
-			tools: tools,
-			stream: false,
-			...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
-			...(responseFormat ? { response_format: responseFormat } : {})
-		});
+		const completion = await client.chat.completions.create(
+			{
+				messages: this.#messages,
+				model: model,
+				tools: tools,
+				stream: false,
+				...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
+				...(responseFormat ? { response_format: responseFormat } : {})
+			},
+			// this signal provides stream cancellation
+			{ signal: this.#signal }
+		);
 
 		// OpenAI-compatible gateways sometimes report failures in the body of a 200
 		const error = (completion as { error?: { message?: string } }).error;

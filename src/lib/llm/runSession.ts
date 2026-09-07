@@ -16,9 +16,10 @@ const defaultCallback: IntermediateCallback & InitCallback = async (data?) =>
 export async function runSingleSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
-	initCallback: InitCallback = defaultCallback
+	initCallback: InitCallback = defaultCallback,
+	signal?: AbortSignal
 ): Promise<Result> {
-	const session = new LLMSession(developerPrompt, resultType.required());
+	const session = new LLMSession(developerPrompt, resultType.required(), signal);
 
 	// Register all available functions
 	availableFunctions.forEach((llmFunction) => session.registerFunction(llmFunction));
@@ -41,12 +42,18 @@ export async function runSingleSession(
 }
 
 /** Runs `tasks` with at most `limit` in flight, keeping the results in order. */
-async function mapWithLimit<T, R>(items: T[], limit: number, run: (item: T) => Promise<R>) {
+async function mapWithLimit<T, R>(
+	items: T[],
+	limit: number,
+	run: (item: T) => Promise<R>,
+	signal?: AbortSignal
+) {
 	const results = new Array<R>(items.length);
 	let next = 0;
 
 	const worker = async () => {
 		while (next < items.length) {
+			signal?.throwIfAborted();
 			const index = next++;
 			results[index] = await run(items[index]);
 		}
@@ -61,24 +68,33 @@ export async function runChunkedSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
 	initCallback: InitCallback = defaultCallback,
+	signal?: AbortSignal,
 	concurrency = 3
 ): Promise<Result> {
 	const chunks = splitSentences(input);
-	if (chunks.length <= 1) return runSingleSession(input, intermediateCallback, initCallback);
+	if (chunks.length <= 1)
+		return runSingleSession(input, intermediateCallback, initCallback, signal);
 
 	await initCallback?.();
-	const results = await mapWithLimit(chunks, concurrency, async (chunk) => {
-		try {
-			return await runSingleSession(chunk.text, intermediateCallback);
-		} catch (error: unknown) {
-			// one sentence failing is not a reason to lose the rest of the text
-			return {
-				error: error instanceof Error ? error.message : String(error),
-				resultParts: [originalPart(chunk.text)],
-				alternatives: []
-			} satisfies Result;
-		}
-	});
+	const results = await mapWithLimit(
+		chunks,
+		concurrency,
+		async (chunk) => {
+			try {
+				return await runSingleSession(chunk.text, intermediateCallback, undefined, signal);
+			} catch (error: unknown) {
+				// an abort means nobody is listening anymore, so there is nothing to merge into
+				if (signal?.aborted) throw error;
+				// one sentence failing is not a reason to lose the rest of the text
+				return {
+					error: error instanceof Error ? error.message : String(error),
+					resultParts: [originalPart(chunk.text)],
+					alternatives: []
+				} satisfies Result;
+			}
+		},
+		signal
+	);
 
 	return mergeChunkResults(chunks, results);
 }
@@ -86,9 +102,10 @@ export async function runChunkedSession(
 export default async function runSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
-	initCallback: InitCallback = defaultCallback
+	initCallback: InitCallback = defaultCallback,
+	signal?: AbortSignal
 ): Promise<Result> {
 	return process.env.PARALLEL_SENTENCES === 'on'
-		? runChunkedSession(input, intermediateCallback, initCallback)
-		: runSingleSession(input, intermediateCallback, initCallback);
+		? runChunkedSession(input, intermediateCallback, initCallback, signal)
+		: runSingleSession(input, intermediateCallback, initCallback, signal);
 }

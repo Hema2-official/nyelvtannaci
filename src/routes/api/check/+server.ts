@@ -7,10 +7,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		const { input } = (await request.json()) as { input?: string };
 		if (!input) throw new Error('No input specified');
 
+		// We abort when the client disconnects instead of finishing the inaccessible session
+		const abort = new AbortController();
+
 		const stream = new ReadableStream({
 			async start(controller) {
 				const encoder = new TextEncoder();
 				const sendEvent = (event: string, data: unknown) => {
+					if (abort.signal.aborted) return;
 					try {
 						controller.enqueue(
 							encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`)
@@ -24,12 +28,16 @@ export const POST: RequestHandler = async ({ request }) => {
 					const result = await runSession(
 						input,
 						async (summary) => sendEvent('intermediate', summary),
-						async () => sendEvent('init', 'hi')
+						async () => sendEvent('init', 'hi'),
+						abort.signal
 					);
 					sendEvent('result', result);
 				} catch (error: unknown) {
-					console.error(error);
-					sendEvent('error', errorMessage(error, 'Session error'));
+					// if aborted, the reader is gone anyway
+					if (!abort.signal.aborted) {
+						console.error(error);
+						sendEvent('error', errorMessage(error, 'Session error'));
+					}
 				} finally {
 					try {
 						controller.close();
@@ -37,6 +45,10 @@ export const POST: RequestHandler = async ({ request }) => {
 						// Stream might already be closed
 					}
 				}
+			},
+			cancel(reason) {
+				console.debug('Client disconnected, aborting the session');
+				abort.abort(reason);
 			}
 		});
 
