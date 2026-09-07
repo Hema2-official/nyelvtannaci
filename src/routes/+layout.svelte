@@ -1,5 +1,5 @@
 <script lang="ts">
-	import * as Sidebar from '$lib/components/ui/sidebar/index.js';
+	import * as Sidebar from '$lib/components/ui/sidebar';
 	import AppSidebar from '$lib/components/app-sidebar.svelte';
 	import { Toaster } from '$lib/components/ui/sonner';
 	import { ModeWatcher } from 'mode-watcher';
@@ -15,7 +15,7 @@
 		<header
 			class="flex w-full shrink-0 items-center gap-2 px-3 py-4 transition-[width,height] ease-linear"
 		>
-			<Sidebar.Trigger />
+			<Sidebar.Trigger class="md:hidden" />
 		</header>
 
 		{@render children()}

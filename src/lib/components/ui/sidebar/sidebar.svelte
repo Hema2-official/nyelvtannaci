@@ -22,18 +22,7 @@
 	const sidebar = useSidebar();
 </script>
 
-{#if collapsible === 'none'}
-	<div
-		class={cn(
-			'flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground',
-			className
-		)}
-		bind:this={ref}
-		{...restProps}
-	>
-		{@render children?.()}
-	</div>
-{:else if sidebar.isMobile}
+{#if sidebar.isMobile}
 	<Sheet.Root bind:open={() => sidebar.openMobile, (v) => sidebar.setOpenMobile(v)} {...restProps}>
 		<Sheet.Content
 			bind:ref
@@ -56,6 +45,17 @@
 			</div>
 		</Sheet.Content>
 	</Sheet.Root>
+{:else if collapsible === 'none'}
+	<div
+		class={cn(
+			'flex h-full w-(--sidebar-width) flex-col bg-sidebar text-sidebar-foreground',
+			className
+		)}
+		bind:this={ref}
+		{...restProps}
+	>
+		{@render children?.()}
+	</div>
 {:else}
 	<div
 		bind:this={ref}

@@ -22,17 +22,20 @@ export type SidebarStateProps = {
 
 class SidebarState {
 	readonly props: SidebarStateProps;
-	open = $derived.by(() => this.props.open());
+	#isMobile = new IsMobile();
+	open = $derived.by(() => (this.#isMobile.current ? this.props.open() : true));
 	openMobile = $state(false);
-	setOpen: SidebarStateProps['setOpen'];
-	#isMobile: IsMobile;
 	state = $derived.by(() => (this.open ? 'expanded' : 'collapsed'));
 
 	constructor(props: SidebarStateProps) {
-		this.setOpen = props.setOpen;
-		this.#isMobile = new IsMobile();
 		this.props = props;
 	}
+
+	setOpen = (value: boolean) => {
+		if (this.#isMobile.current) {
+			this.props.setOpen(value);
+		}
+	};
 
 	// Convenience getter for checking if the sidebar is mobile
 	// without this, we would need to use `sidebar.isMobile.current` everywhere
@@ -53,7 +56,7 @@ class SidebarState {
 	};
 
 	toggle = () => {
-		return this.#isMobile.current ? (this.openMobile = !this.openMobile) : this.setOpen(!this.open);
+		return this.#isMobile.current ? (this.openMobile = !this.openMobile) : undefined;
 	};
 }
 
