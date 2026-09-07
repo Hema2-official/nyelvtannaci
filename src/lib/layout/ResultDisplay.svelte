@@ -105,7 +105,10 @@
 		<div class="space-y-1">
 			<p class="text-xs font-medium tracking-wider text-slate-500 uppercase">Hivatkozások</p>
 			{#each part.references as ref (ref)}
-				<p class="text-xs text-slate-400 italic">„{ref}"</p>
+				<!-- This had a " char and I found it using the „[^”]*$ regex! How cool is that?
+				 About two years ago, I didn't even know much about regex. I learnt it while
+				 sketching up a parser in C3. -->
+				<p class="text-xs text-slate-400 italic">„{ref}”</p>
 			{/each}
 		</div>
 	{/if}
@@ -191,7 +194,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 			>
 				<div class="flex flex-col gap-2">
 					<span class="text-lg font-medium {TYPE_STYLES[activePart.type].color}">
-						„{activePart.text}"
+						„{activePart.text}”
 					</span>
 					{@render ExplanationContent(activePart)}
 				</div>
@@ -204,7 +207,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 			{#if activePart}
 				<Drawer.Header class="text-left">
 					<Drawer.Title class={TYPE_STYLES[activePart.type].color}>
-						„{activePart.text}"
+						„{activePart.text}”
 					</Drawer.Title>
 				</Drawer.Header>
 				<div class="space-y-3 px-4 pb-2">
