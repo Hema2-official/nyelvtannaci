@@ -179,7 +179,7 @@ class LLMSession<ResultType extends ZodType> {
 		tools: ChatCompletionTool[],
 		responseFormat: ResponseFormatJSONSchema | undefined
 	) {
-		const { client, model, reasoningEffort } = getProvider();
+		const { client, model, reasoningEffort, extraBody } = getProvider();
 
 		const completion = await client.chat.completions.create(
 			{
@@ -188,7 +188,8 @@ class LLMSession<ResultType extends ZodType> {
 				tools: tools,
 				stream: false,
 				...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
-				...(responseFormat ? { response_format: responseFormat } : {})
+				...(responseFormat ? { response_format: responseFormat } : {}),
+				...extraBody
 			},
 			// this signal provides stream cancellation
 			{ signal: this.#signal }

@@ -78,6 +78,8 @@ export type LLMProvider = {
 	structuredOutputs: boolean;
 	/** Reasoning budget to request; undefined leaves the model on its own default. */
 	reasoningEffort?: string;
+	/** Provider-specific fields merged into every chat-completion request body. */
+	extraBody?: Record<string, unknown>;
 	/** How many model responses a single session may consume. */
 	maxTurns: number;
 };
@@ -143,6 +145,16 @@ function resolveHeaders(id: ProviderId) {
 	return headers;
 }
 
+function getExtraBody(id: ProviderId): Record<string, unknown> | undefined {
+	if (id === 'openrouter') {
+		const prioritize = read('OPENROUTER_PRIORITIZE');
+		if (!prioritize) return undefined;
+		return { provider: { sort: prioritize } };
+	}
+
+	return undefined;
+}
+
 function createProvider(): LLMProvider {
 	const id = resolveProviderId();
 	const preset = presets[id];
@@ -170,6 +182,7 @@ function createProvider(): LLMProvider {
 		strictTools,
 		structuredOutputs,
 		reasoningEffort: read('LLM_REASONING_EFFORT'),
+		extraBody: getExtraBody(id),
 		maxTurns: readPositiveInt('SESSION_MAX_TURNS', 25)
 	};
 }

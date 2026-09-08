@@ -144,6 +144,7 @@ describe.sequential('correction flow', () => {
 				reasoningEffort: provider.reasoningEffort ?? null,
 				structuredOutputs: provider.structuredOutputs,
 				strictTools: provider.strictTools,
+				extraBody: provider.extraBody ?? null,
 				maxTurns: provider.maxTurns
 			},
 			// so a benchmark can be tied to the prompt it was run against

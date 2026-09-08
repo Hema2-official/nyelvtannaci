@@ -43,6 +43,7 @@ LLM_API_KEY=sk-or-v1-...
 LLM_MODEL=openai/gpt-4o
 LLM_APP_URL=https://example.com   # optional, sent as HTTP-Referer
 LLM_APP_NAME=Nyelvtannaci         # optional, sent as X-Title
+OPENROUTER_PRIORITIZE=throughput  # optional, sort providers by this field
 ```
 
 ### Provider quirks
