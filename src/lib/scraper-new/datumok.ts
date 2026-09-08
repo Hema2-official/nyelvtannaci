@@ -4,13 +4,11 @@ import scraperAxios, { getCached } from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
-import { akhErrorMessage, parseAkhForms, type AkhForm } from './akhForms';
+import { akhErrorMessage, parseAkhForms, type AkhBatch } from './akhForms';
 
 export const datumokParams = z.object({
 	input: z.string().describe('A dátum ÉÉÉÉ-HH-NN alakban, pl. "2024-01-01"')
 });
-
-export type DatumokResult = AkhForm;
 
 /** The site's own date input; anything else it simply rejects. */
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,7 +20,7 @@ function generateUrl(input: string) {
 	});
 }
 
-export async function scrapeDatumok(args: z.infer<typeof datumokParams>): Promise<DatumokResult[]> {
+export async function scrapeDatumok(args: z.infer<typeof datumokParams>): Promise<AkhBatch> {
 	const input = args.input.trim();
 
 	if (!ISO_DATE.test(input))
@@ -36,13 +34,14 @@ export async function scrapeDatumok(args: z.infer<typeof datumokParams>): Promis
 	if (error) throw new Error(error);
 
 	const results = parseAkhForms(doc);
-	if (results.length === 0) throw new Error('No results found: invalid elements in results list');
+	if (results.simpleForms.length + results.specialForms.length === 0)
+		throw new Error('No results found: invalid elements in results list');
 	return results;
 }
 
 function provideSummary(
 	args: z.infer<typeof datumokParams>,
-	results: DatumokResult[]
+	results: AkhBatch
 ): IntermediateSummary[] {
 	// One row for the whole query: a date has a dozen accepted forms, and listing each as its
 	// own row would bury everything else in the analysis.
@@ -50,11 +49,12 @@ function provideSummary(
 		{
 			tool: 'datumok',
 			query: args.input.trim(),
-			expression: results[0].form,
+			expression: results.simpleForms[0],
 			correct: undefined,
-			explanation: results
-				.map((result) => (result.note ? `${result.form} - ${result.note}` : result.form))
-				.join('\n'),
+			explanation:
+				results.simpleForms.join(', ') +
+				', ' +
+				results.specialForms.map((sf) => sf.form + ' - ' + sf.note).join(', '),
 			shareLink: generateUrl(args.input)
 		}
 	];
@@ -67,4 +67,4 @@ export const datumokFunction = {
 	parameters: datumokParams,
 	callback: scrapeDatumok,
 	summarize: provideSummary
-} satisfies LLMFunction<typeof datumokParams, DatumokResult[]>;
+} satisfies LLMFunction<typeof datumokParams, AkhBatch>;

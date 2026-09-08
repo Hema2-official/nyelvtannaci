@@ -4,15 +4,13 @@ import scraperAxios, { getCached } from './scraperAxios';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
-import { akhErrorMessage, parseAkhForms, type AkhForm } from './akhForms';
+import { akhErrorMessage, parseAkhForms, type AkhBatch } from './akhForms';
 
 export const szamokParams = z.object({
 	input: z
 		.string()
 		.describe('A szám számjegyekkel, pl. "2024", "3,5" (tizedes tört) vagy "1/2" (tört)')
 });
-
-export type SzamokResult = AkhForm;
 
 /** What the site accepts: a sign, digits, a dot, a slash or a decimal comma. */
 const NUMERAL = /^[+-]?[\d.,/]+$/;
@@ -24,7 +22,7 @@ function generateUrl(input: string) {
 	});
 }
 
-export async function scrapeSzamok(args: z.infer<typeof szamokParams>): Promise<SzamokResult[]> {
+export async function scrapeSzamok(args: z.infer<typeof szamokParams>): Promise<AkhBatch> {
 	const input = args.input.trim();
 
 	if (!NUMERAL.test(input))
@@ -39,23 +37,25 @@ export async function scrapeSzamok(args: z.infer<typeof szamokParams>): Promise<
 	if (error) throw new Error(error);
 
 	const results = parseAkhForms(doc);
-	if (results.length === 0) throw new Error('No results found: invalid elements in results list');
+	if (results.simpleForms.length + results.specialForms.length === 0)
+		throw new Error('No results found: invalid elements in results list');
 	return results;
 }
 
 function provideSummary(
 	args: z.infer<typeof szamokParams>,
-	results: SzamokResult[]
+	results: AkhBatch
 ): IntermediateSummary[] {
 	return [
 		{
 			tool: 'szamok',
 			query: args.input.trim(),
-			expression: results[0].form,
+			expression: results.simpleForms[0],
 			correct: undefined,
-			explanation: results
-				.map((result) => (result.note ? `${result.form} - ${result.note}` : result.form))
-				.join('\n'),
+			explanation:
+				results.simpleForms.join(', ') +
+				', ' +
+				results.specialForms.map((sf) => sf.form + ' - ' + sf.note).join(', '),
 			shareLink: generateUrl(args.input)
 		}
 	];
@@ -68,4 +68,4 @@ export const szamokFunction = {
 	parameters: szamokParams,
 	callback: scrapeSzamok,
 	summarize: provideSummary
-} satisfies LLMFunction<typeof szamokParams, SzamokResult[]>;
+} satisfies LLMFunction<typeof szamokParams, AkhBatch>;

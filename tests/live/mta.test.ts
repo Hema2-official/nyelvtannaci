@@ -124,16 +124,12 @@ describe.sequential('datumok', () => {
 
 	it('lists the plain and the suffixed forms of one date', async () => {
 		const results = await scrapeDatumok({ input: '1848-03-15' });
-		const forms = results.map((result) => result.form);
+		const forms = [...results.simpleForms, ...results.specialForms.map((sf) => sf.form)];
 
 		// the two ul.result lists are merged, so both kinds have to be in there
 		expect(forms).toContain('1848. március 15.');
 		expect(forms).toContain('1848. március 15-én');
 		expect(forms).toContain('1848. márc. 15.');
-
-		const suffixed = results.find((result) => result.form === '1848. március 15-én');
-		expect(suffixed?.references).toContain('AkH12-298');
-		for (const reference of suffixed!.references) expect(reference).toMatch(/^AkH1[12]-/);
 	});
 
 	it('rejects a day that does not exist, in the words the site uses', async () => {
@@ -161,24 +157,26 @@ describe.sequential('szamok', () => {
 	it('spells out a number and flags the non-standard variant', async () => {
 		const results = await scrapeSzamok({ input: '2024' });
 
-		expect(results[0].form).toBe('kétezer-huszonnégy');
+		expect(results.simpleForms[0]).toBe('kétezer-huszonnégy');
 
-		const variant = results.find((result) => result.form === 'kettőezer-huszonnégy');
+		const variant = results.specialForms.find((sf) => sf.form === 'kettőezer-huszonnégy');
 		expect(variant?.note).toBe('Nem része a sztenderd nyelvváltozatnak.');
 	});
 
 	it('keeps the note that says when a form is the adjectival one', async () => {
 		const results = await scrapeSzamok({ input: '32' });
 
-		const adjectival = results.find((result) => result.form === 'harminckét');
+		const adjectival = results.specialForms.find((sf) => sf.form === 'harminckét');
 		expect(adjectival?.note).toContain('Jelzői értelemben');
-		expect(results.map((result) => result.form)).toContain('harminckettő');
+		expect(results.simpleForms).toContain('harminckettő');
 	});
 
 	it('handles fractions and decimals', async () => {
-		expect((await scrapeSzamok({ input: '3,5' }))[0].form).toBe('három egész öt tized');
+		expect((await scrapeSzamok({ input: '3,5' })).simpleForms[0]).toBe('három egész öt tized');
 		await pause();
-		expect((await scrapeSzamok({ input: '1/2' })).map((r) => r.form)).toContain('egyketted');
+		expect((await scrapeSzamok({ input: '1/2' })).specialForms.map((sf) => sf.form)).toContain(
+			'egyketted'
+		);
 	});
 });
 

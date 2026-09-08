@@ -2,15 +2,16 @@ import { MTA_BASE_URL } from '$env/static/private';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import type { HTMLElement } from 'node-html-parser';
 
-/** One accepted way of writing something, as the site lists it. */
-export type AkhForm = {
-	form: string;
+/** All accepted ways of writing something, as the site lists them. */
+export type AkhBatch = {
+	simpleForms: string[];
+	specialForms: { form: string; note?: string }[];
 	references: string[];
-	note?: string;
 };
 
-export function parseAkhForms(doc: HTMLElement): AkhForm[] {
-	const forms: AkhForm[] = [];
+export function parseAkhForms(doc: HTMLElement): AkhBatch {
+	const referenceSet = new Set<string>();
+	const resultBatch: AkhBatch = { simpleForms: [], specialForms: [], references: [] };
 
 	for (const item of doc.querySelectorAll('ul.result li')) {
 		const text = item.textContent?.replace(/\s+/g, ' ').trim();
@@ -40,10 +41,14 @@ export function parseAkhForms(doc: HTMLElement): AkhForm[] {
 						.replace(/^\((.*)\)$/s, '$1')
 		);
 
-		forms.push({ form, references: Object.keys(fullReferences), ...(note ? { note } : {}) });
+		Object.keys(fullReferences).forEach((ref) => referenceSet.add(ref));
+		if (note) resultBatch.specialForms.push({ form, note });
+		else resultBatch.simpleForms.push(form);
 	}
 
-	return forms;
+	resultBatch.references = Array.from(referenceSet);
+
+	return resultBatch;
 }
 
 /** Both tools report a rejected input in the same place. */
