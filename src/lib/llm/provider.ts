@@ -45,9 +45,7 @@ const presets: Record<ProviderId, ProviderPreset> = {
 		apiKeyVars: ['LLM_API_KEY', 'OPENROUTER_API_KEY'],
 		supportsDeveloperRole: false,
 		supportsStrictTools: false,
-		// OpenRouter forwards json_schema to the models that support it, and its
-		// structured-outputs middleware covers most of the rest.
-		supportsStructuredOutputs: true
+		supportsStructuredOutputs: false
 	},
 	custom: {
 		apiKeyVars: ['LLM_API_KEY', 'OPENAI_API_KEY'],
