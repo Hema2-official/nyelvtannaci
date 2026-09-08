@@ -19,7 +19,7 @@ scraperAxios.interceptors.response.use(
 		}
 
 		config.retryCount = config.retryCount ?? 0;
-		const maxRetries = 3;
+		const maxRetries = 5;
 		const delayMs = 1000;
 
 		const isNetworkOr5xxOrTimeout =
