@@ -175,7 +175,8 @@ function createProvider(): LLMProvider {
 		client: new OpenAI({
 			apiKey: resolveApiKey(id, preset),
 			baseURL,
-			defaultHeaders: resolveHeaders(id)
+			defaultHeaders: resolveHeaders(id),
+			maxRetries: readPositiveInt('LLM_MAX_RETRIES', 5)
 		}),
 		model,
 		systemRole: supportsDeveloperRole ? 'developer' : 'system',
