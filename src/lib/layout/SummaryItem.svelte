@@ -4,6 +4,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import {
 		ArrowRightIcon,
+		BookSearchIcon,
 		CalendarDaysIcon,
 		CheckCheckIcon,
 		ExternalLinkIcon,
@@ -24,6 +25,7 @@
 		kulon_vagy_egybe: SquareSplitHorizontalIcon,
 		'helyes-e_igy': CheckCheckIcon,
 		elvalasztas: ScissorsLineDashedIcon,
+		nevkereso: BookSearchIcon,
 		datumok: CalendarDaysIcon,
 		szamok: HashIcon
 	};
