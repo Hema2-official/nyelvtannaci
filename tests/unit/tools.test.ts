@@ -1,10 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import scraperAxios from '$lib/scraper-new/scraperAxios';
-import { datumokFunction, scrapeDatumok } from '$lib/scraper-new/datumok';
+import { scrapeDatumok } from '$lib/scraper-new/datumok';
 import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
-import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
-import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
-import { szamokFunction, scrapeSzamok } from '$lib/scraper-new/szamok';
+import { scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
+import { scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
+import { scrapeSzamok } from '$lib/scraper-new/szamok';
+import { scrapeNevkereso } from '$lib/scraper-new/nevkereso';
+import { mtaResponseCache } from '$lib/scraper-new/responseCache';
+import { availableFunctions } from '$lib/llm/promptConfig';
 
 /** Make any request fail, so a test can prove no request was attempted. */
 function refuseRequests() {
@@ -82,15 +85,123 @@ describe.each([
 	});
 });
 
+/**
+ * nevkereso keeps the apostrophe the other guards reject: it belongs to names like
+ * "L'Aquila", and the value of a name lookup is exactly that it takes the name as written.
+ */
+describe('nevkereso input validation', () => {
+	let request: ReturnType<typeof refuseRequests>;
+
+	beforeEach(() => {
+		request = refuseRequests();
+		mtaResponseCache.clear();
+	});
+
+	afterEach(() => vi.restoreAllMocks());
+
+	it.each([
+		['empty', ''],
+		['markup', '<script>'],
+		['a double quote', 'Petőfi"'],
+		['a backslash', 'Petőfi\\híd']
+	])('rejects %s without asking the site', async (_label, input) => {
+		await expect(scrapeNevkereso({ input })).rejects.toThrow();
+		expect(request).not.toHaveBeenCalled();
+	});
+
+	it('lets a name with an apostrophe through', async () => {
+		await expect(scrapeNevkereso({ input: "L'Aquila" })).rejects.toThrow(/reached the network/);
+		expect(request).toHaveBeenCalledOnce();
+	});
+});
+
+/**
+ * The one piece of judgement in the scraper: which of the register's prefix matches spell
+ * the letters that were asked about. Everything downstream - the model's decision, the
+ * category lookups, the summary - hangs off that flag.
+ */
+describe('nevkereso match marking', () => {
+	beforeEach(() => mtaResponseCache.clear());
+	afterEach(() => vi.restoreAllMocks());
+
+	/** The register's real markup, trimmed to what the parser reads. */
+	function serve(names: Record<string, string>) {
+		const items = Object.entries(names)
+			.map(([id, name]) => `<li class="short" id="hint_${id}">${name}</li>`)
+			.join('');
+		const categories =
+			'<span class="tag">tulajdonn&eacute;v</span> <span class="tag">f&ouml;ldrajzi&nbsp;n&eacute;v</span>';
+
+		// axios overloads do not narrow to a single call shape, and the scraper reads only .data
+		vi.spyOn(scraperAxios, 'get').mockImplementation((async (url: string) => ({
+			data: url.includes('/getmodule/') ? categories : `<ul class="result">${items}</ul>`
+		})) as unknown as typeof scraperAxios.get);
+	}
+
+	it('marks the entry that spells the query, across hyphens, spaces, accents and case', async () => {
+		serve({ '1': 'Petőfi híd', '2': 'Petőfi hídi', '3': 'Petőfi hídon' });
+
+		const result = await scrapeNevkereso({ input: 'petofi-hid' });
+
+		expect(result.matches.map((match) => [match.name, match.sameLetters === true])).toEqual([
+			['Petőfi híd', true],
+			['Petőfi hídi', false],
+			['Petőfi hídon', false]
+		]);
+	});
+
+	it('looks a category up for the marked entries only', async () => {
+		serve({ '1': 'Margit-sziget', '2': 'Margitsziget', '3': 'Margitsziget utca' });
+
+		const result = await scrapeNevkereso({ input: 'Margitsziget' });
+
+		// two spellings of the same letters: the register offers both and settles nothing
+		expect(result.matches[0].categories).toEqual(['tulajdonnév', 'földrajzi név']);
+		expect(result.matches[1].categories).toEqual(['tulajdonnév', 'földrajzi név']);
+		expect(result.matches[2].categories).toBeUndefined();
+	});
+
+	it('refuses a page it cannot read rather than reporting an unknown name', async () => {
+		// a maintenance page, a redesign, a 200 that is not the fragment: none of those mean
+		// "the register has no such name", and answering as if they did is a silent wrong answer
+		vi.spyOn(scraperAxios, 'get').mockResolvedValue({
+			data: '<html><body><h1>Internal error</h1></body></html>'
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+
+		await expect(scrapeNevkereso({ input: 'Petőfi híd' })).rejects.toThrow(/No results found/);
+	});
+
+	it('reads an empty list as the register having no such name', async () => {
+		serve({});
+
+		expect(await scrapeNevkereso({ input: 'Nyugati pályaudvar' })).toEqual({ matches: [] });
+	});
+
+	it('still answers when a category lookup fails', async () => {
+		vi.spyOn(scraperAxios, 'get').mockImplementation((async (url: string) => {
+			if (url.includes('/getmodule/')) throw new Error('500');
+			return { data: '<ul class="result"><li id="hint_1">Petőfi híd</li></ul>' };
+		}) as unknown as typeof scraperAxios.get);
+
+		const result = await scrapeNevkereso({ input: 'Petőfi-híd' });
+
+		expect(result.matches).toEqual([{ name: 'Petőfi híd', sameLetters: true }]);
+	});
+
+	it('says how many matches it left out rather than truncating in silence', async () => {
+		serve(Object.fromEntries(Array.from({ length: 14 }, (_, i) => [i + 1, `Aachen ${i}`])));
+
+		const result = await scrapeNevkereso({ input: 'a' });
+
+		expect(result.matches).toHaveLength(10);
+		expect(result.more).toBe(4);
+	});
+});
+
 describe('tool definitions', () => {
 	it('gives every tool a name and a description the model can act on', () => {
-		for (const tool of [
-			kulonVagyEgybeFunction,
-			helyesEIgyFunction,
-			elvalasztasFunction,
-			datumokFunction,
-			szamokFunction
-		]) {
+		for (const tool of availableFunctions) {
 			expect(tool.name).toMatch(/^[a-z0-9_-]+$/i);
 			expect(tool.description.length).toBeGreaterThan(20);
 		}

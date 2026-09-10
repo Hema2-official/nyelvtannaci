@@ -13,9 +13,11 @@ for `vitest run tests/e2e`.
 
 ## tests/unit — what holds without a network
 
-Input validation for all three tools (every scraper puts the model's argument straight into a
-URL, so the guard has to hold before any request goes out), the tool definitions the model
-selects on, and the JSON-schema normalisation in `toolSchema.ts` — strict mode closes every
+Input validation for the scrapers (every one of them puts the model's argument straight into a
+URL, so the guard has to hold before any request goes out — `nevkereso` is the one that keeps
+the apostrophe, because names like `L'Aquila` need it), the marking of the register entries
+that spell a query back, the tool definitions the model selects on, and the JSON-schema
+normalisation in `toolSchema.ts` — strict mode closes every
 object and lists every key, non-strict drops `additionalProperties` entirely. That last one is
 the thing most likely to break when you point the app at a different gateway.
 
@@ -73,8 +75,17 @@ write" is circular when the hyphen is the question, and gpt-5.6-luna duly measur
 already-hyphenated form. Two such ambiguities came out of one cross-model run, both of them
 bugs in the prompt rather than in the model.
 
-One case, `paragraph, four errors`, fails perhaps one run in five by design; its note carries
+One case, `paragraph, three errors`, fails perhaps one run in five by design; its note carries
 the measured rates. Check which error was dropped before assuming a regression.
+
+### Reading a report
+
+A run that never reached an answer — a dropped connection, a refusing gateway — is counted
+apart from a wrong one. It prints as `????` rather than `FAIL`, carries `errored: true` in the
+JSON, and the summary line ends `NOT COMPARABLE: n session(s) never ran`. **That is not a
+measurement.** One two-minute gateway outage killed 27 consecutive sessions in a single run
+and the report was indistinguishable from a prompt that had suddenly got much worse. Model
+requests are retried (`LLM_MAX_RETRIES`, default 5), but a long enough outage still wins.
 
 Useful knobs: `LLM_PROVIDER`, `LLM_MODEL`, `LLM_REASONING_EFFORT`, `LLM_STRUCTURED_OUTPUTS`,
 `SESSION_MAX_TURNS`, and `BENCH_REPEATS=3` to run every case N times when you care about

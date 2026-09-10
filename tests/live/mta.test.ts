@@ -4,6 +4,7 @@ import { scrapeSzamok } from '$lib/scraper-new/szamok';
 import { elvalasztasFunction, scrapeElvalasztas } from '$lib/scraper-new/elvalasztas';
 import { helyesEIgyFunction, scrapeHelyesEIgy } from '$lib/scraper-new/helyesEIgy';
 import { kulonVagyEgybeFunction, scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
+import { nevkeresoFunction, scrapeNevkereso } from '$lib/scraper-new/nevkereso';
 
 /**
  * All of the scraping coverage, against the real site: nothing of MTA's is kept in the
@@ -199,5 +200,80 @@ describe.sequential('elvalasztas', () => {
 		expect(summaries[0].correct).toBeUndefined();
 		expect(summaries[0].query).toBe(input);
 		expect(summaries[0].shareLink).toContain('/helyesiras/default/hyph?q=');
+	});
+});
+
+describe.sequential('nevkereso', () => {
+	afterEach(pause);
+
+	it('answers a wrongly written name with the spelling the register holds', async () => {
+		const result = await scrapeNevkereso({ input: 'Petőfi-híd' });
+
+		// the register's index is blind to the hyphen, so the query finds its own letters
+		expect(result.matches[0]).toEqual({
+			name: 'Petőfi híd',
+			sameLetters: true,
+			categories: ['tulajdonnév', 'földrajzi név']
+		});
+
+		// the rest are longer names starting the same way, and answer a different question
+		expect(result.matches.slice(1).every((match) => match.sameLetters === undefined)).toBe(true);
+	});
+
+	it('restores case, accents and a hyphen at once', async () => {
+		const result = await scrapeNevkereso({ input: 'ujzeland' });
+
+		expect(result.matches[0].name).toBe('Új-Zéland');
+		expect(result.matches[0].categories).toContain('országnév');
+	});
+
+	it('returns nothing for a name the register does not have', async () => {
+		// the register is names, and hardly any institution names at that
+		expect(await scrapeNevkereso({ input: 'Nyugati pályaudvar' })).toEqual({ matches: [] });
+	});
+
+	it('keeps both spellings when the register holds two of the same letters', async () => {
+		const result = await scrapeNevkereso({ input: 'Margit-sziget' });
+
+		const marked = result.matches.filter((match) => match.sameLetters);
+		expect(marked.map((match) => match.name)).toEqual(['Margit-sziget', 'Margitsziget']);
+		// the categories are the only thing telling the island from the settlement
+		expect(marked[0].categories).toContain('természetföldrajzi név');
+		expect(marked[1].categories).toContain('településnév');
+	});
+
+	it('reports what it left out instead of truncating in silence', async () => {
+		const result = await scrapeNevkereso({ input: 'a' });
+
+		expect(result.matches).toHaveLength(10);
+		expect(result.more).toBeGreaterThan(0);
+	});
+
+	it('summarises the register answer as a spelling, with a link a reader can open', async () => {
+		const input = 'Petőfi-híd';
+		const [summary] = nevkeresoFunction.summarize!({ input }, await scrapeNevkereso({ input }));
+
+		expect(summary.expression).toBe('Petőfi híd');
+		expect(summary.correct).toBe(false);
+		expect(summary.explanation).toBe('tulajdonnév, földrajzi név');
+		expect(summary.shareLink).toContain('/helyesiras/default/predict?q=');
+	});
+
+	it('calls a name right when the register spells it that way among others', async () => {
+		// "Margitsziget" is not the first entry the register returns, and is still correct
+		const input = 'Margitsziget';
+		const [summary] = nevkeresoFunction.summarize!({ input }, await scrapeNevkereso({ input }));
+
+		expect(summary.correct).toBe(true);
+		expect(summary.expression).toBe('Margitsziget');
+		expect(summary.explanation).toContain('Margit-sziget');
+	});
+
+	it('reports a miss as a miss rather than as a verdict', async () => {
+		const input = 'Nyugati pályaudvar';
+		const [summary] = nevkeresoFunction.summarize!({ input }, await scrapeNevkereso({ input }));
+
+		expect(summary.expression).toBe('nincs találat');
+		expect(summary.correct).toBeUndefined();
 	});
 });

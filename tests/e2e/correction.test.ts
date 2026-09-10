@@ -52,6 +52,12 @@ type Run = {
 	got: string;
 	problem?: string;
 	/**
+	 * The session never produced an answer at all - the provider refused, the connection
+	 * dropped, the turns ran out. A run like that says nothing about the prompt, and counting
+	 * it as a wrong answer is how a two-minute gateway outage once read as a regression.
+	 */
+	errored?: true;
+	/**
 	 * Kept only for a run that failed. A conformance problem is a fault in the parts rather
 	 * than in the text - an explanation where there should be none, a part that is empty -
 	 * and the joined text cannot show you any of that.
@@ -66,6 +72,7 @@ function toolOf(shareLink: string | undefined) {
 	if (shareLink?.includes('/kulegy')) return 'kulon_vagy_egybe';
 	if (shareLink?.includes('/suggest')) return 'helyes-e_igy';
 	if (shareLink?.includes('/hyph')) return 'elvalasztas';
+	if (shareLink?.includes('/predict')) return 'nevkereso';
 	if (shareLink?.includes('/dates')) return 'datumok';
 	if (shareLink?.includes('/numerals')) return 'szamok';
 	return 'unknown';
@@ -85,6 +92,7 @@ describe.sequential('correction flow', () => {
 
 			let got = '';
 			let problem: string | undefined;
+			let errored: true | undefined;
 			let parts: Result['resultParts'] | undefined;
 
 			try {
@@ -101,6 +109,7 @@ describe.sequential('correction flow', () => {
 					(comparableText(got) === comparableText(testCase.expected) ? undefined : 'mismatch');
 			} catch (error: unknown) {
 				problem = errorMessage(error, 'session threw');
+				errored = true;
 			}
 
 			const ms = Math.round(performance.now() - started);
@@ -115,6 +124,7 @@ describe.sequential('correction flow', () => {
 				expected: testCase.expected,
 				got,
 				problem,
+				...(errored ? { errored } : {}),
 				...(problem && parts ? { parts } : {})
 			});
 
@@ -166,6 +176,9 @@ describe.sequential('correction flow', () => {
 				`overall ${report.summary.passed}/${report.summary.total} | ` +
 				`in-prompt ${report.summary.inPrompt.passed}/${report.summary.inPrompt.total} | ` +
 				`unseen ${report.summary.unseen.passed}/${report.summary.unseen.total} | ` +
+				(report.summary.errored
+					? `NOT COMPARABLE: ${report.summary.errored} session(s) never ran | `
+					: '') +
 				`median ${report.summary.medianMs}ms\n${file}\n\n`
 		);
 	});
@@ -180,6 +193,8 @@ function summarise(all: Run[]) {
 
 	return {
 		...count(all),
+		// sessions that never ran, kept apart from answers that were wrong
+		errored: all.filter((run) => run.errored).length,
 		inPrompt: count(all.filter((run) => run.inPrompt)),
 		unseen: count(all.filter((run) => !run.inPrompt)),
 		medianMs: times[Math.floor(times.length / 2)] ?? 0,
@@ -192,12 +207,16 @@ function renderTable(all: Run[]) {
 	return all
 		.map((run) =>
 			[
-				run.passed ? 'pass' : 'FAIL',
+				run.errored ? '????' : run.passed ? 'pass' : 'FAIL',
 				run.case.padEnd(width),
 				`${String(run.run).padStart(2)}`,
 				`${String(run.ms).padStart(6)}ms`,
 				`${String(run.toolCalls).padStart(3)} calls`,
-				run.passed ? '' : `${run.problem}: ${JSON.stringify(run.got)}`
+				run.errored
+					? `errored: ${run.problem}`
+					: run.passed
+						? ''
+						: `${run.problem}: ${JSON.stringify(run.got)}`
 			].join('  ')
 		)
 		.join('\n');
