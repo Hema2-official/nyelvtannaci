@@ -15,7 +15,7 @@ type Entry<T> = { value: T; storedAt: number };
 export type CacheStats = { hits: number; misses: number; size: number };
 
 const DEFAULT_MAX_ENTRIES = 500;
-const DEFAULT_TTL_MS = 60 * 60 * 1000;
+const DEFAULT_TTL_MS = 2 * 24 * 60 * 60 * 1000;
 
 export class ResponseCache<T> {
 	#entries = new Map<string, Entry<T>>();
