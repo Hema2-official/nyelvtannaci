@@ -30,24 +30,34 @@
 		szamok: HashIcon
 	};
 
+	const FUNCTION_NAMES: Record<AvailableFunctionName, string> = {
+		kulon_vagy_egybe: 'Külön vagy egybe?',
+		'helyes-e_igy': 'Helyes-e így?',
+		elvalasztas: 'Elválasztás',
+		nevkereso: 'Névkereső',
+		datumok: 'Dátumok',
+		szamok: 'Számok'
+	};
+
 	let correctnessClass = $derived(summary?.correct ? 'text-correct' : 'text-incorrect');
 </script>
 
 <!-- Loading spinner to tool icon transition -->
 {#snippet MediaIcon()}
-	{@const FunctionIcon = summary ? FUNCTION_ICONS[summary.tool] : undefined}
-	{#if FunctionIcon}
-		<div
-			class="col-start-1 row-start-1 flex items-center justify-center"
-			in:fly={{ x: 12, duration: 200 }}
-		>
-			<FunctionIcon class="size-6 text-muted-foreground" />
+	{#if summary}
+		{@const FunctionIcon = FUNCTION_ICONS[summary.tool]}
+		<div class="flex items-center justify-center" in:fly={{ x: 12, duration: 200 }}>
+			<Tooltip.Root>
+				<Tooltip.Trigger>
+					<FunctionIcon class="size-6 text-muted-foreground" />
+				</Tooltip.Trigger>
+				<Tooltip.Content>
+					<p>{FUNCTION_NAMES[summary.tool]}</p>
+				</Tooltip.Content>
+			</Tooltip.Root>
 		</div>
 	{:else}
-		<div
-			class="col-start-1 row-start-1 flex items-center justify-center"
-			out:fly={{ x: -12, duration: 200 }}
-		>
+		<div class="flex items-center justify-center" out:fly={{ x: -12, duration: 200 }}>
 			<Spinner class="size-6 text-muted-foreground opacity-80" />
 		</div>
 	{/if}
@@ -56,15 +66,7 @@
 <div class="flex w-full" in:fly={{ y: -10 }}>
 	<Item.Root size="sm">
 		<Item.Media>
-			<Tooltip.Root disabled={!summary}>
-				<Tooltip.Trigger class="grid grid-cols-1 grid-rows-1 place-items-center">
-					{@render MediaIcon()}
-				</Tooltip.Trigger>
-				<Tooltip.Content>
-					<!-- TODO: readable name here -->
-					<p>{summary?.tool}</p>
-				</Tooltip.Content>
-			</Tooltip.Root>
+			{@render MediaIcon()}
 		</Item.Media>
 		{#if summary}
 			<Item.Content class="gap-1">
