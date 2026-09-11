@@ -175,6 +175,16 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 				{/each}
 			</Card.Footer>
 		</Card.Root>
+
+		{#if result.alternatives.length > 0}
+			<Label class="mt-4 text-lg text-muted-foreground">Más olvasatok</Label>
+			{#each result.alternatives as alternative}
+				<p class="mt-2 whitespace-pre-wrap">
+					<span class="font-semibold">„{alternative.text}”:</span>
+					{alternative.meaning}
+				</p>
+			{/each}
+		{/if}
 	{:else}
 		<span class="flex items-center gap-2 text-lg select-none">
 			<CheckIcon class="size-6 text-correct" />
