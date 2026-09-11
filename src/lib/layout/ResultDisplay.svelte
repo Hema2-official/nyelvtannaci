@@ -16,7 +16,8 @@
 	const hasCorrections = $derived(result.resultParts.some((p) => p.type !== 'original'));
 	const hasExplanations = $derived(result.resultParts.some((p) => p.explanation));
 
-	const TYPE_STYLES = {
+	type TypeStyle = { label: string; color: string; part: string };
+	const TYPE_STYLES: Record<SuccessfulResult['resultParts'][number]['type'], TypeStyle> = {
 		original: {
 			label: 'Eredeti',
 			color: cn('text-original'),
@@ -37,7 +38,7 @@
 			color: cn('text-removed'),
 			part: cn('border-b-2 border-dashed border-removed/50 bg-removed/10 line-through')
 		}
-	} as const;
+	};
 
 	type ResultPart = SuccessfulResult['resultParts'][number];
 
