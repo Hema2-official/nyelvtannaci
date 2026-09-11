@@ -1,9 +1,13 @@
 import { errorMessage } from '$lib/utils/errorMessage';
 import runSession from '$lib/llm/runSession';
+import { checkLimiter } from '$lib/server/rateLimit';
 import type { RequestHandler } from '@sveltejs/kit';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
+		const limited = checkLimiter.reject(getClientAddress);
+		if (limited) return limited;
+
 		const { input } = (await request.json()) as { input?: string };
 		if (!input) throw new Error('No input specified');
 
