@@ -9,7 +9,9 @@
 	import * as Card from '$lib/components/ui/card';
 	import { useDebounce, watch } from 'runed';
 	import { Label } from '$lib/components/ui/label';
+	import * as Tooltip from '$lib/components/ui/tooltip';
 	import CopyButton from './CopyButton.svelte';
+	import ReportButton from './ReportButton.svelte';
 
 	type Props = { result: SuccessfulResult; isDesktop: MediaQuery };
 	let { result, isDesktop }: Props = $props();
@@ -149,7 +151,12 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 	{#if hasCorrections}
 		<div class="flex items-center justify-between pb-2">
 			<Label class="text-lg text-muted-foreground">Javasolt alak</Label>
-			<CopyButton {result} />
+			<Tooltip.Provider delayDuration={300}>
+				<div class="flex items-center gap-1">
+					<CopyButton {result} />
+					<ReportButton {result} />
+				</div>
+			</Tooltip.Provider>
 		</div>
 		<Card.Root class="w-full" size="sm">
 			<Card.Content class="text-base whitespace-pre-wrap">

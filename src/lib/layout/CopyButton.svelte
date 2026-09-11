@@ -31,7 +31,6 @@
 			await navigator.clipboard.writeText(correctedText);
 			copied = true;
 			resetCopied();
-			toast.success('Másolva a vágólapra!');
 		} catch (err) {
 			console.error('Failed to copy: ', err);
 			toast.error('Nem sikerült a vágólapra másolni');
@@ -39,22 +38,14 @@
 	}
 </script>
 
-<Tooltip.Provider delayDuration={300}>
-	<Tooltip.Root>
-		<Tooltip.Trigger>
-			<Button
-				variant="ghost"
-				size="icon"
-				class="text-muted-foreground"
-				onclick={handleCopy}
-				title="Másolás a vágólapra"
-			>
-				{#if copied}<CheckIcon class="size-3.5" />
-				{:else}<CopyIcon class="size-3.5" />{/if}
-			</Button>
-		</Tooltip.Trigger>
-		<Tooltip.Content side="left">
-			<p>Másolás a vágólapra</p>
-		</Tooltip.Content>
-	</Tooltip.Root>
-</Tooltip.Provider>
+<Tooltip.Root>
+	<Tooltip.Trigger>
+		<Button variant="ghost" size="icon" class="text-muted-foreground" onclick={handleCopy}>
+			{#if copied}<CheckIcon class="size-3.5" />
+			{:else}<CopyIcon class="size-3.5" />{/if}
+		</Button>
+	</Tooltip.Trigger>
+	<Tooltip.Content side="top">
+		<p>Másolás a vágólapra</p>
+	</Tooltip.Content>
+</Tooltip.Root>
