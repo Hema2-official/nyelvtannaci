@@ -48,7 +48,7 @@
 									<Sidebar.MenuSubItem class="cursor-default">
 										<Sidebar.MenuSubButton
 											onclick={() => viewState.openHistory(id)}
-											class="flex justify-between gap-2"
+											class="flex justify-between gap-2 pr-0.5!"
 										>
 											<span class="truncate">{historyEntry.query.trim()}</span>
 											<Button
