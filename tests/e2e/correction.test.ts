@@ -3,7 +3,8 @@ import { createHash } from 'node:crypto';
 import { afterAll, describe, expect, it } from 'vitest';
 import runSession from '$lib/llm/runSession';
 import getProvider from '$lib/llm/provider';
-import { developerPrompt } from '$lib/llm/promptConfig';
+import { availableFunctions, developerPrompt, resultType } from '$lib/llm/promptConfig';
+import { toChatCompletionTool, toParameterSchema } from '$lib/llm/toolSchema';
 import { errorMessage } from '$lib/utils/errorMessage';
 import { comparableText, conformanceProblem, correctedText, correctionCases } from './cases';
 import type { Result } from '$lib/llm/promptConfig';
@@ -157,8 +158,8 @@ describe.sequential('correction flow', () => {
 				extraBody: provider.extraBody ?? null,
 				maxTurns: provider.maxTurns
 			},
-			// so a benchmark can be tied to the prompt it was run against
-			promptSha: createHash('sha256').update(developerPrompt).digest('hex').slice(0, 12),
+			// so a benchmark can be tied to what the model was actually given
+			promptSha: modelInputSha(),
 			ranAt: new Date().toISOString(),
 			repeats,
 			summary: summarise(runs),
@@ -183,6 +184,15 @@ describe.sequential('correction flow', () => {
 		);
 	});
 });
+
+function modelInputSha() {
+	const given = {
+		prompt: developerPrompt,
+		result: toParameterSchema(resultType, true),
+		tools: availableFunctions.map((tool) => toChatCompletionTool(tool, true))
+	};
+	return createHash('sha256').update(JSON.stringify(given)).digest('hex').slice(0, 12);
+}
 
 function summarise(all: Run[]) {
 	const count = (subset: Run[]) => ({
