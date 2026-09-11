@@ -16,7 +16,7 @@
 	import type { LucideIcon } from '@lucide/svelte';
 	import { fly } from 'svelte/transition';
 	import * as Tooltip from '$lib/components/ui/tooltip';
-	import Spinner from '$lib/components/ui/spinner/spinner.svelte';
+	import Skeleton from '$lib/components/ui/skeleton/skeleton.svelte';
 
 	type Props = { summary: IntermediateSummary | null };
 	let { summary }: Props = $props();
@@ -42,33 +42,18 @@
 	let correctnessClass = $derived(summary?.correct ? 'text-correct' : 'text-incorrect');
 </script>
 
-<!-- Loading spinner to tool icon transition -->
-{#snippet MediaIcon()}
+<div class="flex w-full" in:fly={{ y: -8 }}>
 	{#if summary}
 		{@const FunctionIcon = FUNCTION_ICONS[summary.tool]}
-		<div class="flex items-center justify-center" in:fly={{ x: 12, duration: 200 }}>
-			<Tooltip.Root>
-				<Tooltip.Trigger>
-					<FunctionIcon class="size-6 text-muted-foreground" />
-				</Tooltip.Trigger>
-				<Tooltip.Content>
-					<p>{FUNCTION_NAMES[summary.tool]}</p>
-				</Tooltip.Content>
-			</Tooltip.Root>
-		</div>
-	{:else}
-		<div class="flex items-center justify-center" out:fly={{ x: -12, duration: 200 }}>
-			<Spinner class="size-6 text-muted-foreground opacity-80" />
-		</div>
-	{/if}
-{/snippet}
-
-<div class="flex w-full" in:fly={{ y: -10 }}>
-	<Item.Root size="sm">
-		<Item.Media>
-			{@render MediaIcon()}
-		</Item.Media>
-		{#if summary}
+		<Item.Root size="sm">
+			<Item.Media>
+				<Tooltip.Root>
+					<Tooltip.Trigger>
+						<FunctionIcon class="size-6 text-muted-foreground" />
+					</Tooltip.Trigger>
+					<Tooltip.Content><p>{FUNCTION_NAMES[summary.tool]}</p></Tooltip.Content>
+				</Tooltip.Root>
+			</Item.Media>
 			<Item.Content class="gap-1">
 				<Item.Title class="block {summary.correct === undefined ? '' : correctnessClass}">
 					{#if summary.query && summary.query !== summary.expression}
@@ -92,6 +77,16 @@
 					</Button>
 				{/if}
 			</Item.Actions>
-		{/if}
-	</Item.Root>
+		</Item.Root>
+	{:else}
+		<Item.Root size="sm" class="opacity-70">
+			<Item.Media class="flex items-center justify-center">
+				<Skeleton class="size-6 rounded-md" />
+			</Item.Media>
+			<Item.Content class="gap-1">
+				<Item.Title class="flex w-full"><Skeleton class="h-4 w-[70%] rounded-md" /></Item.Title>
+				<Item.Description><Skeleton class="h-4 w-[30%] rounded-md" /></Item.Description>
+			</Item.Content>
+		</Item.Root>
+	{/if}
 </div>
