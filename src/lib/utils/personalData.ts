@@ -174,6 +174,13 @@ export function findPersonalData(text: string): PersonalDataMatch[] {
 	return found.sort((a, b) => a.index - b.index);
 }
 
+/** How many of each kind were found (for analytics) */
+export function countPersonalData(matches: PersonalDataMatch[]) {
+	const counts: Partial<Record<PersonalDataKind, number>> = {};
+	for (const { kind } of matches) counts[kind] = (counts[kind] ?? 0) + 1;
+	return counts;
+}
+
 function forDisplay(text: string) {
 	return text.length > 48 ? text.slice(0, 48) + '…' : text;
 }

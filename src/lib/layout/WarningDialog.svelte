@@ -3,7 +3,12 @@
 	import { Button } from '$lib/components/ui/button';
 	import { ShieldAlertIcon } from '@lucide/svelte';
 	import { ScrollArea } from '$lib/components/ui/scroll-area';
-	import { groupPersonalData, type PersonalDataMatch } from '$lib/utils/personalData';
+	import {
+		countPersonalData,
+		groupPersonalData,
+		type PersonalDataMatch
+	} from '$lib/utils/personalData';
+	import { track } from '$lib/api/analytics';
 
 	type Props = {
 		open: boolean;
@@ -14,13 +19,27 @@
 
 	let groups = $derived(groupPersonalData(matches));
 
+	function report(outcome: 'proceeded' | 'edit' | 'dismissed') {
+		track({ kind: 'warning', detected: countPersonalData(matches), outcome });
+	}
+
+	function handleOpenChange(next: boolean) {
+		if (!next) report('dismissed');
+	}
+
+	function edit() {
+		report('edit');
+		open = false;
+	}
+
 	function confirm() {
+		report('proceeded');
 		open = false;
 		onconfirm();
 	}
 </script>
 
-<Dialog.Root bind:open>
+<Dialog.Root bind:open onOpenChange={handleOpenChange}>
 	<Dialog.Content showCloseButton={false} class="gap-5">
 		<Dialog.Header>
 			<Dialog.Title class="flex items-center gap-2">
@@ -56,7 +75,7 @@
 		</ScrollArea>
 
 		<Dialog.Footer>
-			<Button variant="outline" onclick={() => (open = false)}>Vissza a szerkesztéshez</Button>
+			<Button variant="outline" onclick={edit}>Vissza a szerkesztéshez</Button>
 			<Button variant="destructive" onclick={confirm}>Mehet</Button>
 		</Dialog.Footer>
 	</Dialog.Content>

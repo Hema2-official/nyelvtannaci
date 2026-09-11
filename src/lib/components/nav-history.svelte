@@ -7,13 +7,20 @@
 	import { viewState } from '$lib/states/ViewState.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Spinner } from '$lib/components/ui/spinner';
+	import { track } from '$lib/api/analytics';
 
 	let open = $state(true);
 
 	const allEntries = historyDb.getAll();
 
+	function handleOpen(id: number) {
+		track({ kind: 'history_open' });
+		viewState.openHistory(id);
+	}
+
 	function handleDelete(id: number, e: MouseEvent) {
 		e.stopPropagation();
+		track({ kind: 'history_delete' });
 		historyDb.deleteEntry(id);
 	}
 </script>
@@ -53,7 +60,7 @@
 										{@const id = historyEntry.id}
 										<Sidebar.MenuSubItem class="cursor-default">
 											<Sidebar.MenuSubButton
-												onclick={() => viewState.openHistory(id)}
+												onclick={() => handleOpen(id)}
 												class="flex justify-between gap-2 pr-0.5!"
 											>
 												<span class="truncate">{historyEntry.query.trim()}</span>
