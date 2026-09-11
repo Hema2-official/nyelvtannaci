@@ -22,7 +22,7 @@
 		<Link
 			href={repoLink}
 			Icon={CodeIcon}
-			badgeClass="bg-indigo-600 not-dark:bg-indigo-700"
+			badgeClass="bg-blue-600 not-dark:bg-blue-700"
 			label="GitHub"
 			description="Forráskód, hibajelentés"
 		/>
