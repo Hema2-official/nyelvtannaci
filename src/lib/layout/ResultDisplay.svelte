@@ -9,6 +9,7 @@
 	import * as Card from '$lib/components/ui/card';
 	import { useDebounce, watch } from 'runed';
 	import { Label } from '$lib/components/ui/label';
+	import CopyButton from './CopyButton.svelte';
 
 	type Props = { result: SuccessfulResult; isDesktop: MediaQuery };
 	let { result, isDesktop }: Props = $props();
@@ -146,7 +147,10 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 
 <div class="mt-8 flex w-full flex-col" in:slide={{ axis: 'y' }}>
 	{#if hasCorrections}
-		<Label class="pb-2 text-lg text-muted-foreground">Javasolt alak</Label>
+		<div class="flex items-center justify-between pb-2">
+			<Label class="text-lg text-muted-foreground">Javasolt alak</Label>
+			<CopyButton {result} />
+		</div>
 		<Card.Root class="w-full" size="sm">
 			<Card.Content class="text-base whitespace-pre-wrap">
 				{@render TextPartsDisplay()}
