@@ -120,6 +120,29 @@ describe('checkResultInvariants', () => {
 		expect(problem).toMatch(/space/i);
 	});
 
+	it('names every mangled quote at once, not just the first', () => {
+		const problem = checkResultInvariants(
+			input,
+			result(
+				['A kutató ', 'original'],
+				['intezet ', 'original'],
+				['munkatarsai jól dolgoznak.', 'original']
+			)
+		);
+		expect(problem).toContain('"intezet "');
+		expect(problem).toContain('"munkatarsai jól dolgoznak."');
+		expect(problem).toMatch(/These 2 parts/);
+	});
+
+	it('rejects a clause that vanished from a short input', () => {
+		// measured: this exact input came back as "Ez a doboz kisebb", the rest in no part at all
+		const problem = checkResultInvariants(
+			'Ez a doboz kissebb, mint a másik.',
+			result(['Ez a doboz ', 'original'], ['kisebb', 'corrected'])
+		);
+		expect(problem).toMatch(/left out/i);
+	});
+
 	it('rejects a result that lost most of a long input', () => {
 		const long =
 			'A kutató intézet munkatársai jól dolgoznak, és az eredményeiket minden évben közzéteszik a saját kiadványukban is, amelyet az egyetem könyvtára is megőriz.';
@@ -127,7 +150,7 @@ describe('checkResultInvariants', () => {
 			long,
 			result(['A ', 'original'], ['kutatóintézet', 'corrected'])
 		);
-		expect(problem).toMatch(/shorter than the input/i);
+		expect(problem).toMatch(/left out/i);
 	});
 
 	// the measured defect: complaining about length here made the model pad "tej" out to "telyj"

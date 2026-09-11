@@ -41,11 +41,12 @@ export default function checkResultInvariants(input: string, result: Result): st
 			`A part that is not original covers exactly the text that changed: move the space into the neighbouring original part.`
 		);
 
-	const invented = parts.find((part) => part.type === 'original' && !input.includes(part.text));
-	if (invented)
+	const invented = parts.filter((part) => part.type === 'original' && !input.includes(part.text));
+	if (invented.length)
 		return (
-			`The part ${JSON.stringify(invented.text)} is marked original, but that text is not in the input. ` +
-			`Mark it corrected or added, or quote the input exactly.`
+			`${invented.length === 1 ? 'This part is' : `These ${invented.length} parts are`} marked original, ` +
+			`but that text is not in the input: ${invented.map((part) => JSON.stringify(part.text)).join(', ')}. ` +
+			`Mark each one corrected or added, or quote the input exactly. Check the others the same way before sending.`
 		);
 
 	const joined = joinParts(result);
@@ -59,11 +60,16 @@ export default function checkResultInvariants(input: string, result: Result): st
 	if (count(joined, DOUBLE_SPACE) > count(input, DOUBLE_SPACE))
 		return 'The joined result has a double space that the input did not have, at a part boundary.';
 
-	// On short inputs (e.g. "tely" -> "tej") it's a 0.75 yield, and complaining about it would make
-	// the model pad the words back ("telyj").
-	if (input.length >= 120 && joined.length < input.length * 0.8)
+	// That is what makes the check safe on a short input, where a ratio alone is not: "tely" ->
+	// "tej" accounts for three characters of four, and complaining about it once made the model
+	// pad the word back to "telyj". A whole clause going missing is a different size of loss,
+	// and it happens on short inputs too - "Ez a doboz kissebb, mint a másik." came back as
+	// "Ez a doboz kisebb", with the rest in no part at all and nothing to catch it.
+	const accounted = parts.reduce((total, part) => total + part.text.length, 0);
+	const lost = input.length - accounted;
+	if (lost > 12 && accounted < input.length * 0.85)
 		return (
-			`The joined result is much shorter than the input (${joined.length} characters against ${input.length}). ` +
+			`The parts account for only ${accounted} characters of the input's ${input.length}. ` +
 			`Something was left out. What you genuinely take out is a removed part that says why; nothing may simply disappear.`
 		);
 
