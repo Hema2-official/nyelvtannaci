@@ -99,7 +99,7 @@
 {#snippet ExplanationContent(part: ResultPart)}
 	{#if part.explanation}
 		<span class="text-sm font-medium text-muted-foreground">Magyarázat</span>
-		<p class="text-sm leading-relaxed">{part.explanation}</p>
+		<p class="text-sm leading-relaxed whitespace-pre-wrap">{part.explanation}</p>
 	{/if}
 
 	{#if part.references && part.references.length > 0}
@@ -148,7 +148,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 	{#if hasCorrections}
 		<Label class="pb-2 text-lg text-muted-foreground">Javasolt alak</Label>
 		<Card.Root class="w-full" size="sm">
-			<Card.Content class="text-base">
+			<Card.Content class="text-base whitespace-pre-wrap">
 				{@render TextPartsDisplay()}
 			</Card.Content>
 
@@ -174,7 +174,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 			<Label class="mt-4 text-lg text-muted-foreground">Magyarázat</Label>
 			{#each result.resultParts as part}
 				{#if part.explanation}
-					<p class="mt-2">
+					<p class="mt-2 whitespace-pre-wrap">
 						{#if result.resultParts.length > 1}<span>„{part.text}”: </span>{/if}
 						{part.explanation}
 					</p>
@@ -194,7 +194,9 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 				onmouseleave={handleMouseLeave}
 			>
 				<div class="flex flex-col gap-2">
-					<span class="text-lg font-medium {TYPE_STYLES[activePart.type].color}">
+					<span
+						class="text-lg font-medium whitespace-pre-wrap {TYPE_STYLES[activePart.type].color}"
+					>
 						„{activePart.text}”
 					</span>
 					{@render ExplanationContent(activePart)}
@@ -207,7 +209,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 		<Drawer.Content class="pb-8">
 			{#if activePart}
 				<Drawer.Header class="text-left">
-					<Drawer.Title class={TYPE_STYLES[activePart.type].color}>
+					<Drawer.Title class="whitespace-pre-wrap {TYPE_STYLES[activePart.type].color}">
 						„{activePart.text}”
 					</Drawer.Title>
 				</Drawer.Header>
