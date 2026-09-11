@@ -36,7 +36,7 @@
 	<Label class="pb-2 text-lg text-muted-foreground" for="input-editor">Ellenőrizendő szöveg</Label>
 	<Textarea
 		id="input-editor"
-		class="max-h-[40dvh] min-h-36 w-full resize-none border-none px-3 py-2.5 text-base! outline-none"
+		class="max-h-[40dvh] min-h-36 w-full resize-none overflow-y-auto! border-none px-3 py-2.5 text-base! outline-none"
 		bind:ref={textareaRef}
 		bind:value={viewState.currentInput}
 		disabled={checkResource.loading}
