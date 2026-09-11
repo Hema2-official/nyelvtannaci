@@ -7,6 +7,8 @@
 	import { TextareaAutosize, type ResourceReturn } from 'runed';
 	import type { SuccessfulResult } from '$lib/llm/promptConfig';
 	import { viewState } from '$lib/states/ViewState.svelte';
+	import WarningDialog from './WarningDialog.svelte';
+	import { findPersonalData, type PersonalDataMatch } from '$lib/utils/personalData';
 
 	type Props = { checkResource: ResourceReturn<SuccessfulResult, unknown, false> };
 	let { checkResource }: Props = $props();
@@ -19,8 +21,19 @@
 
 	let allowSubmit = $derived(viewState.currentInput.length > 0 && !checkResource.loading);
 
+	let warningOpen = $state(false);
+	let personalDataMatches: PersonalDataMatch[] = $state([]);
+
 	function handleSubmit() {
 		if (!allowSubmit) return;
+
+		const matches = findPersonalData(viewState.currentInput);
+		if (matches.length > 0) {
+			personalDataMatches = matches;
+			warningOpen = true;
+			return;
+		}
+
 		checkResource.refetch();
 	}
 
@@ -58,4 +71,10 @@
 			{#if checkResource.loading}<Spinner />{:else}Mehet{/if}
 		</Button>
 	</div>
+
+	<WarningDialog
+		bind:open={warningOpen}
+		matches={personalDataMatches}
+		onconfirm={() => checkResource.refetch()}
+	/>
 </div>
