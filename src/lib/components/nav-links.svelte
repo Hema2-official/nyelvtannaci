@@ -3,19 +3,21 @@
 	import { HeartIcon, CodeIcon } from '@lucide/svelte';
 	import { env } from '$env/dynamic/public';
 	import Link from './link.svelte';
+	import Feedback from './feedback.svelte';
 
 	const repoLink = env.PUBLIC_REPO_LINK;
 	const donateLink = env.PUBLIC_DONATE_LINK;
 </script>
 
 <Sidebar.Menu>
+	<Feedback />
 	{#if donateLink}
 		<Link
 			href={donateLink}
 			Icon={HeartIcon}
 			badgeClass="bg-rose-600 not-dark:bg-rose-700"
 			label="Támogatás"
-			description="Minden forint segít"
+			description="Minden forint segít."
 		/>
 	{/if}
 	{#if repoLink}
