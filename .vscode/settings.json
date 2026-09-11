@@ -3,12 +3,25 @@
 		"source.fixAll.eslint": "explicit"
 	},
 	"editor.tabSize": 4,
-	"editor.rulers": [100],
+	"editor.rulers": [
+		100
+	],
 	"editor.formatOnSave": true,
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"[svelte]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
 	},
-	"eslint.validate": ["javascript", "javascriptreact", "svelte"],
-	"window.title": "Nyelvtannáci"
+	"eslint.validate": [
+		"javascript",
+		"javascriptreact",
+		"svelte"
+	],
+	"window.title": "Nyelvtannáci",
+	"tailwindCSS.classAttributes": [
+		"class",
+		"className",
+		"ngClass",
+		"class:list",
+		"badgeClass"
+	]
 }
