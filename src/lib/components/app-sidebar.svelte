@@ -3,12 +3,18 @@
 	import type { ComponentProps } from 'svelte';
 	import NavHistory from './nav-history.svelte';
 	import NavLinks from './nav-links.svelte';
+	import { BookOpenCheckIcon } from '@lucide/svelte';
 
 	let { ref = $bindable(null) }: ComponentProps<typeof Sidebar.Root> = $props();
 </script>
 
 <Sidebar.Root bind:ref variant="floating">
-	<Sidebar.Header></Sidebar.Header>
+	<Sidebar.Header>
+		<span class="flex items-center justify-center gap-2 pt-2 text-center text-base font-semibold">
+			<BookOpenCheckIcon class="size-6" />
+			<h1>Helyesírás-ellenőrző</h1>
+		</span>
+	</Sidebar.Header>
 	<Sidebar.Content>
 		<NavHistory />
 	</Sidebar.Content>
