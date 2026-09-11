@@ -70,9 +70,9 @@
 		</Item.Media>
 		{#if summary}
 			<Item.Content class="gap-1">
-				<Item.Title class={summary.correct === undefined ? '' : correctnessClass}>
+				<Item.Title class="block {summary.correct === undefined ? '' : correctnessClass}">
 					{#if summary.query && summary.query !== summary.expression}
-						{summary.query} <ArrowRightIcon class="inline size-4" />
+						{summary.query} <ArrowRightIcon class="inline-block size-4 shrink-0 align-middle" />
 					{/if}
 					{summary.expression}
 				</Item.Title>
