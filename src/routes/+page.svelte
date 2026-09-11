@@ -72,7 +72,7 @@
 	>
 		{#if viewState.showAnalysis}
 			<div class="flex w-full flex-col gap-2" in:fly={{ delay: 100, x: 40 }}>
-				<Label class="text-lg text-muted-foreground">Elemzés</Label>
+				<Label class="text-lg text-muted-foreground">Források</Label>
 				<Analysis summaries={viewState.intermediateSummaries} loading={checkResource.loading} />
 			</div>
 		{/if}

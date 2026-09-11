@@ -68,7 +68,7 @@
 			az elküldéshez
 		</span>
 		<Button class="w-fit" disabled={!allowSubmit} onclick={handleSubmit}>
-			{#if checkResource.loading}<Spinner />{:else}Mehet{/if}
+			{#if checkResource.loading}<Spinner data-icon="inline-end" /> Elemzés{:else}Mehet{/if}
 		</Button>
 	</div>
 
