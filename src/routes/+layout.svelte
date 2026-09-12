@@ -13,7 +13,7 @@
 	<AppSidebar />
 	<Sidebar.Inset class="h-dvh w-full items-center">
 		<header
-			class="flex w-full shrink-0 items-center gap-2 px-3 py-4 transition-[width,height] ease-linear"
+			class="flex w-full shrink-0 items-center gap-2 px-3 pt-4 transition-[width] ease-linear md:pt-0"
 		>
 			<Sidebar.Trigger class="md:hidden" />
 		</header>
