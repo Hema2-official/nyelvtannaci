@@ -116,3 +116,49 @@ export const analyticsLimiter = new RateLimiter('analytics', {
 	limit: 30,
 	message: 'Too many requests'
 });
+
+export const submissionLimiter = new RateLimiter('submissions', {
+	limit: 5,
+	message: 'Túl sok beküldés rövid idő alatt. Kérlek, várj egy kicsit.'
+});
+
+/**
+ * How much work may be in flight at once, across every caller. The window limiter is per
+ * address and a flood from many addresses walks straight past it; this is the one that keeps a
+ * busy minute from turning into an unbounded provider bill.
+ */
+export class ConcurrencyLimit {
+	readonly #name: string;
+	readonly #fallback: number;
+	#active = 0;
+	#max: number | null = null;
+
+	constructor(name: string, fallback: number) {
+		this.#name = name;
+		this.#fallback = fallback;
+	}
+
+	/**
+	 * A release function, or `null` when the service is already full. The caller must invoke it
+	 * on every exit path - it is safe to call twice, and a permit that is never returned is one
+	 * the process never gets back.
+	 */
+	acquire(): (() => void) | null {
+		this.#max ??= positiveNumber(
+			`RATE_LIMIT_CONCURRENT_${this.#name.toUpperCase()}`,
+			this.#fallback
+		);
+		if (this.#active >= this.#max) return null;
+
+		this.#active++;
+		let released = false;
+
+		return () => {
+			if (released) return;
+			released = true;
+			this.#active--;
+		};
+	}
+}
+
+export const checkConcurrency = new ConcurrencyLimit('checks', 8);

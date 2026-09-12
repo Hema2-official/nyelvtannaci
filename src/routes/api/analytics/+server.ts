@@ -2,7 +2,7 @@ import { json, type RequestHandler } from '@sveltejs/kit';
 import { z } from 'zod';
 import { record } from '$lib/server/analytics';
 import { analyticsEvent } from '$lib/utils/analyticsEvents';
-import { analyticsLimiter } from '$lib/server/rateLimit';
+import { analyticsLimiter, submissionLimiter } from '$lib/server/rateLimit';
 import { errorMessage } from '$lib/utils/errorMessage';
 
 /** 128KB body limit, nothing needs more than that here */
@@ -28,6 +28,11 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const parsed = analyticsEvent.safeParse(payload);
 		if (!parsed.success) {
 			return json({ error: z.prettifyError(parsed.error) }, { status: 400 });
+		}
+
+		if (parsed.data.kind === 'report' || parsed.data.kind === 'feedback') {
+			const throttled = submissionLimiter.reject(getClientAddress);
+			if (throttled) return throttled;
 		}
 
 		const id = await record(parsed.data);

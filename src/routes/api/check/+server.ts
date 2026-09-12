@@ -1,7 +1,14 @@
 import { errorMessage } from '$lib/utils/errorMessage';
 import runSession from '$lib/llm/runSession';
-import { checkLimiter } from '$lib/server/rateLimit';
+import { checkConcurrency, checkLimiter } from '$lib/server/rateLimit';
 import type { RequestHandler } from '@sveltejs/kit';
+
+function plainText(body: string, status: number, headers: Record<string, string> = {}) {
+	return new Response(body, {
+		status,
+		headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers }
+	});
+}
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 	try {
@@ -10,6 +17,15 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		const { input } = (await request.json()) as { input?: string };
 		if (!input) throw new Error('No input specified');
+
+		const release = checkConcurrency.acquire();
+		if (!release) {
+			return plainText(
+				'A szolgáltatás pillanatnyilag leterhelt. Próbáld újra pár másodperc múlva.',
+				503,
+				{ 'Retry-After': '30' }
+			);
+		}
 
 		// We abort when the client disconnects instead of finishing the inaccessible session
 		const abort = new AbortController();
@@ -43,6 +59,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						sendEvent('error', errorMessage(error, 'Session error'));
 					}
 				} finally {
+					release();
 					try {
 						controller.close();
 					} catch {
