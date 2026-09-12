@@ -52,6 +52,14 @@
 	});
 </script>
 
+<svelte:head>
+	<title>Helyesírás-ellenőrző</title>
+	<meta
+		name="description"
+		content="Magyar szövegrészletek helyesírásának automatikus ellenőrzése."
+	/>
+</svelte:head>
+
 <div
 	class="flex w-full flex-col justify-center p-12 transition-[gap] duration-400 lg:flex-row
 		{viewState.showAnalysis ? 'gap-8' : 'gap-0'}"
