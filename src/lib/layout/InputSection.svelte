@@ -9,6 +9,7 @@
 	import { viewState } from '$lib/states/ViewState.svelte';
 	import WarningDialog from './WarningDialog.svelte';
 	import { findPersonalData, type PersonalDataMatch } from '$lib/utils/personalData';
+	import { maxInputLength } from '$lib/utils/limits';
 
 	type Props = { checkResource: ResourceReturn<SuccessfulResult, unknown, false> };
 	let { checkResource }: Props = $props();
@@ -20,6 +21,7 @@
 	});
 
 	let allowSubmit = $derived(viewState.currentInput.length > 0 && !checkResource.loading);
+	let showCount = $derived(viewState.currentInput.length > maxInputLength - 200);
 
 	let warningOpen = $state(false);
 	let personalDataMatches: PersonalDataMatch[] = $state([]);
@@ -53,9 +55,10 @@
 		bind:ref={textareaRef}
 		bind:value={viewState.currentInput}
 		disabled={checkResource.loading}
+		maxlength={maxInputLength}
 		onkeydown={handleKeydown}
 	/>
-	<div class="flex w-full items-center justify-between gap-2 pt-2">
+	<div class="flex w-full items-center justify-between gap-3 pt-2">
 		<span
 			class="text-sm text-muted-foreground transition-opacity
                 select-none {allowSubmit ? 'opacity-60' : 'opacity-40'}"
@@ -67,6 +70,11 @@
 			</Kbd.Group>
 			az elküldéshez
 		</span>
+		{#if showCount}
+			<span class="ml-auto text-sm text-muted-foreground tabular-nums">
+				{viewState.currentInput.length} / {maxInputLength}
+			</span>
+		{/if}
 		<Button class="w-fit" disabled={!allowSubmit} onclick={handleSubmit}>
 			{#if checkResource.loading}<Spinner data-icon="inline-end" /> Elemzés{:else}Mehet{/if}
 		</Button>

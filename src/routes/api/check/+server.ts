@@ -1,6 +1,7 @@
 import { errorMessage } from '$lib/utils/errorMessage';
 import runSession from '$lib/llm/runSession';
 import { checkConcurrency, checkLimiter } from '$lib/server/rateLimit';
+import { maxInputLength } from '$lib/utils/limits';
 import type { RequestHandler } from '@sveltejs/kit';
 
 function plainText(body: string, status: number, headers: Record<string, string> = {}) {
@@ -17,6 +18,13 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		const { input } = (await request.json()) as { input?: string };
 		if (!input) throw new Error('No input specified');
+
+		if (input.length > maxInputLength) {
+			return plainText(
+				`A szöveg túl hosszú: egyszerre legfeljebb ${maxInputLength} karakter ellenőrizhető.`,
+				413
+			);
+		}
 
 		const release = checkConcurrency.acquire();
 		if (!release) {
