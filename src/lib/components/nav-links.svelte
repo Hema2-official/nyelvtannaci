@@ -1,6 +1,6 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
-	import { HeartIcon, CodeIcon } from '@lucide/svelte';
+	import { HeartIcon, CodeIcon, BookOpenIcon } from '@lucide/svelte';
 	import { env } from '$env/dynamic/public';
 	import Link from './link.svelte';
 	import Feedback from './feedback.svelte';
@@ -11,6 +11,13 @@
 
 <Sidebar.Menu>
 	<Feedback />
+	<Link
+		href="/docs"
+		Icon={BookOpenIcon}
+		badgeClass="bg-slate-600 not-dark:bg-slate-700"
+		label="Dokumentáció"
+		description="Hogyan működik?"
+	/>
 	{#if donateLink}
 		<Link
 			href={donateLink}

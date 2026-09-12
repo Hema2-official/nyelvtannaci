@@ -1,11 +1,15 @@
 <script lang="ts">
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import type { ComponentProps } from 'svelte';
+	import { page } from '$app/state';
 	import NavHistory from './nav-history.svelte';
+	import NavDocs from './nav-docs.svelte';
 	import NavLinks from './nav-links.svelte';
 	import { BookOpenCheckIcon } from '@lucide/svelte';
 
 	let { ref = $bindable(null) }: ComponentProps<typeof Sidebar.Root> = $props();
+
+	const inDocs = $derived(page.url.pathname.startsWith('/docs'));
 </script>
 
 <Sidebar.Root bind:ref variant="floating">
@@ -16,7 +20,11 @@
 		</span>
 	</Sidebar.Header>
 	<Sidebar.Content>
-		<NavHistory />
+		{#if inDocs}
+			<NavDocs />
+		{:else}
+			<NavHistory />
+		{/if}
 	</Sidebar.Content>
 	<Sidebar.Footer>
 		<NavLinks />
