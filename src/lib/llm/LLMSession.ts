@@ -86,7 +86,6 @@ class LLMSession<ResultType extends ZodType> {
 
 	addMessage(message: ChatCompletionMessageParam) {
 		this.#messages.push(message);
-		console.debug(message);
 	}
 
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
