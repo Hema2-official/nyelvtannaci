@@ -60,8 +60,8 @@
 	/>
 	<div class="flex w-full items-center justify-between gap-3 pt-2">
 		<span
-			class="text-sm text-muted-foreground transition-opacity
-                select-none {allowSubmit ? 'opacity-60' : 'opacity-40'}"
+			class="hidden text-sm text-muted-foreground transition-opacity select-none md:inline
+				{allowSubmit ? 'opacity-60' : 'opacity-40'}"
 		>
 			<Kbd.Group>
 				<Kbd.Root>Ctrl</Kbd.Root>
@@ -70,14 +70,16 @@
 			</Kbd.Group>
 			az elküldéshez
 		</span>
-		{#if showCount}
-			<span class="ml-auto text-sm text-muted-foreground tabular-nums">
-				{viewState.currentInput.length} / {maxInputLength}
-			</span>
-		{/if}
-		<Button class="w-fit" disabled={!allowSubmit} onclick={handleSubmit}>
-			{#if checkResource.loading}<Spinner data-icon="inline-end" /> Elemzés{:else}Mehet{/if}
-		</Button>
+		<div class="ml-auto flex items-center gap-3">
+			{#if showCount}
+				<span class="text-sm text-muted-foreground tabular-nums">
+					{viewState.currentInput.length} / {maxInputLength}
+				</span>
+			{/if}
+			<Button class="w-fit" disabled={!allowSubmit} onclick={handleSubmit}>
+				{#if checkResource.loading}<Spinner data-icon="inline-end" /> Elemzés{:else}Mehet{/if}
+			</Button>
+		</div>
 	</div>
 
 	<WarningDialog
