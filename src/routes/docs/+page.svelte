@@ -243,8 +243,68 @@
 				(<code>pnpm run bench</code>):
 			</p>
 
-			<!-- TODO -->
-
+			<div class="overflow-x-auto">
+				<table class="w-full min-w-lg border-collapse text-left text-sm">
+					<thead>
+						<tr class="border-b border-border">
+							<th class="py-2 pr-4 font-medium text-foreground">Modell</th>
+							<th class="py-2 pr-4 font-medium text-foreground">Pontosság</th>
+							<th class="py-2 pr-4 font-medium text-foreground">Medián idő</th>
+							<th class="py-2 font-medium text-foreground">$/1000 futtatás</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">deepseek/deepseek-v4.1-flash</td>
+							<td class="py-2 pr-4 tabular-nums">94,9%</td>
+							<td class="py-2 pr-4 tabular-nums">5,6 s</td>
+							<td class="py-2 tabular-nums">≈ 2,58</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">tencent/hy4-preview</td>
+							<td class="py-2 pr-4 tabular-nums">92,0%</td>
+							<td class="py-2 pr-4 tabular-nums">24,2 s</td>
+							<td class="py-2 tabular-nums">≈ 15,27</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">deepseek/deepseek-v4-flash-0731</td>
+							<td class="py-2 pr-4 tabular-nums">90,7%</td>
+							<td class="py-2 pr-4 tabular-nums">7,1 s</td>
+							<td class="py-2 tabular-nums">≈ 0,65</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">openai/gpt-5-mini</td>
+							<td class="py-2 pr-4 tabular-nums">74,1%</td>
+							<td class="py-2 pr-4 tabular-nums">12,9 s</td>
+							<td class="py-2 tabular-nums">≈ 4,49</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">minimax/minimax-m2</td>
+							<td class="py-2 pr-4 tabular-nums">70,4%</td>
+							<td class="py-2 pr-4 tabular-nums">19,6 s</td>
+							<td class="py-2 tabular-nums">≈ 7,46</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">z-ai/glm-4.6</td>
+							<td class="py-2 pr-4 tabular-nums">70,4%</td>
+							<td class="py-2 pr-4 tabular-nums">24,3 s</td>
+							<td class="py-2 tabular-nums">≈ 11,12</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">mistralai/mistral-medium-3.1</td>
+							<td class="py-2 pr-4 tabular-nums">66,7%</td>
+							<td class="py-2 pr-4 tabular-nums">6,7 s</td>
+							<td class="py-2 tabular-nums">≈ 8,69</td>
+						</tr>
+						<tr class="border-b border-border/40">
+							<td class="py-2 pr-4 text-foreground">openai/gpt-5-nano</td>
+							<td class="py-2 pr-4 tabular-nums">44,4%</td>
+							<td class="py-2 pr-4 tabular-nums">13,0 s</td>
+							<td class="py-2 tabular-nums">≈ 1,19</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
 			<p>
 				A költség az OpenRouter 2026. szeptemberi listaárai (USD) szerint, a modellek mért
 				fogyasztása alapján lett kiszámolva. A modellek költségei közötti eltérés nem csupán az
@@ -252,7 +312,7 @@
 			</p>
 			<p>
 				Az adatok alapján jelenleg a DeepSeek legújabb modellje biztosítja az optimumot
-				ár-teljesítmény arány és sebesség szerint.
+				ár-teljesítmény arány és sebesség szerint, ezért esik rá a választás.
 			</p>
 		</DocsSection>
 	{/if}
