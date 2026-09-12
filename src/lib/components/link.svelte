@@ -15,6 +15,8 @@
 	type LinkProps = Props & { href: string; onclick?: never };
 
 	let { onclick, href, Icon, badgeClass, label, description }: ButtonProps | LinkProps = $props();
+
+	const isExternal = $derived(href !== undefined && /^[a-z]+:\/\//i.test(href));
 </script>
 
 {#snippet Contents()}
@@ -36,7 +38,12 @@
 	<Sidebar.MenuButton size="lg">
 		{#snippet child({ props })}
 			{#if href}
-				<a {href} target="_blank" rel="noopener noreferrer" {...props}>{@render Contents()}</a>
+				<a
+					{href}
+					target={isExternal ? '_blank' : undefined}
+					rel={isExternal ? 'noopener noreferrer' : undefined}
+					{...props}>{@render Contents()}</a
+				>
 			{:else if onclick}
 				<button {onclick} {...props}>{@render Contents()}</button>
 			{/if}
