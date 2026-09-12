@@ -10,6 +10,7 @@
 	import ResultDisplay from '$lib/layout/ResultDisplay.svelte';
 	import { MediaQuery } from 'svelte/reactivity';
 	import InputSection from '$lib/layout/InputSection.svelte';
+	import WelcomeDialog from '$lib/layout/WelcomeDialog.svelte';
 	import { cn } from '$lib/utils/shadcn';
 	import { viewState } from '$lib/states/ViewState.svelte';
 	import { historyDb } from '$lib/utils/history.svelte';
@@ -78,3 +79,5 @@
 		{/if}
 	</div>
 </div>
+
+<WelcomeDialog />
