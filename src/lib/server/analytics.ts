@@ -1,9 +1,19 @@
 import { env } from '$env/dynamic/private';
 import type { AnalyticsEvent } from '$lib/utils/analyticsEvents';
 
-const submissionKinds = new Set<AnalyticsEvent['kind']>(['report', 'feedback']);
+/** Written by the server side, `analyticsEvent` has no `check` member. */
+export type CheckEvent = {
+	kind: 'check';
+	durationMs: number;
+	inputLength: number;
+	ok: boolean;
+	reason?: 'aborted' | 'turns' | 'provider' | 'other';
+	parts?: Partial<Record<'original' | 'corrected' | 'added' | 'removed', number>>;
+};
 
-export async function record(event: AnalyticsEvent): Promise<string | undefined> {
+const submissionKinds = new Set<string>(['report', 'feedback']);
+
+export async function record(event: AnalyticsEvent | CheckEvent): Promise<string | undefined> {
 	const baseUrl = env.SUPABASE_URL?.trim().replace(/\/+$/, '');
 	const key = env.SUPABASE_SERVICE_KEY?.trim();
 	if (!baseUrl || !key) return undefined;

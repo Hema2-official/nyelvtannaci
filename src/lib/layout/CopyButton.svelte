@@ -6,6 +6,7 @@
 	import { toast } from 'svelte-sonner';
 	import { viewState } from '$lib/states/ViewState.svelte';
 	import { useDebounce } from 'runed';
+	import { track } from '$lib/api/analytics';
 
 	type Props = { result: SuccessfulResult };
 	let { result }: Props = $props();
@@ -29,6 +30,7 @@
 
 		try {
 			await navigator.clipboard.writeText(correctedText);
+			track({ kind: 'copy' });
 			copied = true;
 			resetCopied();
 		} catch (err) {

@@ -1,6 +1,8 @@
 import { errorMessage } from '$lib/utils/errorMessage';
 import runSession from '$lib/llm/runSession';
+import type { Result } from '$lib/llm/promptConfig';
 import { checkConcurrency, checkLimiter } from '$lib/server/rateLimit';
+import { record, type CheckEvent } from '$lib/server/analytics';
 import { maxInputLength } from '$lib/utils/limits';
 import type { RequestHandler } from '@sveltejs/kit';
 
@@ -9,6 +11,26 @@ function plainText(body: string, status: number, headers: Record<string, string>
 		status,
 		headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers }
 	});
+}
+
+/** Never the message itself - an invariant failure quotes the model's take on the input back. */
+function failureReason(error: unknown, aborted: boolean): CheckEvent['reason'] {
+	if (aborted) return 'aborted';
+	const message = errorMessage(error, '');
+	if (message.includes('turns')) return 'turns';
+	if (message.includes('provider')) return 'provider';
+	return 'other';
+}
+
+function countParts(result: Result) {
+	const parts: CheckEvent['parts'] = {};
+	for (const { type } of result.resultParts) parts[type] = (parts[type] ?? 0) + 1;
+	return parts;
+}
+
+/** Fire and forget: a correction that worked must not fail over its own bookkeeping. */
+function recordCheck(event: CheckEvent) {
+	record(event).catch((error: unknown) => console.error('[analytics]', error));
 }
 
 export const POST: RequestHandler = async ({ request, getClientAddress }) => {
@@ -37,6 +59,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 
 		// We abort when the client disconnects instead of finishing the inaccessible session
 		const abort = new AbortController();
+		const startTime = Date.now();
 
 		const stream = new ReadableStream({
 			async start(controller) {
@@ -60,12 +83,28 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						abort.signal
 					);
 					sendEvent('result', result);
+
+					recordCheck({
+						kind: 'check',
+						durationMs: Date.now() - startTime,
+						inputLength: input.length,
+						ok: !result.error,
+						parts: countParts(result)
+					});
 				} catch (error: unknown) {
 					// if aborted, the reader is gone anyway
 					if (!abort.signal.aborted) {
 						console.error(error);
 						sendEvent('error', errorMessage(error, 'Session error'));
 					}
+
+					recordCheck({
+						kind: 'check',
+						durationMs: Date.now() - startTime,
+						inputLength: input.length,
+						ok: false,
+						reason: failureReason(error, abort.signal.aborted)
+					});
 				} finally {
 					release();
 					try {

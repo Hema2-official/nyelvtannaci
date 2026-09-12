@@ -10,6 +10,7 @@ const detectedCounts = z.partialRecord(personalDataKind, z.number().int().nonneg
 export const analyticsEvent = z.discriminatedUnion('kind', [
 	z.object({ kind: z.literal('history_open') }),
 	z.object({ kind: z.literal('history_delete') }),
+	z.object({ kind: z.literal('copy') }),
 	z.object({
 		kind: z.literal('warning'),
 		detected: detectedCounts,
@@ -37,7 +38,7 @@ export type AnalyticsEventInput = z.input<typeof analyticsEvent>;
 
 export type TelemetryEventInput = Extract<
 	AnalyticsEventInput,
-	{ kind: 'history_open' | 'history_delete' | 'warning' }
+	{ kind: 'history_open' | 'history_delete' | 'copy' | 'warning' }
 >;
 
 export type SubmissionEventInput = Extract<AnalyticsEventInput, { kind: 'report' | 'feedback' }>;
