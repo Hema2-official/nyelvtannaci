@@ -77,7 +77,7 @@
 				</span>
 			{/if}
 			<Button class="w-fit" disabled={!allowSubmit} onclick={handleSubmit}>
-				{#if checkResource.loading}<Spinner data-icon="inline-end" /> Elemzés{:else}Mehet{/if}
+				{#if checkResource.loading}<Spinner data-icon="inline-start" /> Elemzés{:else}Mehet{/if}
 			</Button>
 		</div>
 	</div>
