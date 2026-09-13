@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { SuccessfulResult } from '$lib/llm/promptConfig';
+	import type { ResultPart, SuccessfulResult } from '$lib/llm/promptConfig';
 	import { cn } from '$lib/utils/shadcn';
 	import { CheckIcon, WholeWordIcon } from '@lucide/svelte';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -20,7 +20,7 @@
 	const hasExplanations = $derived(result.resultParts.some((p) => p.explanation));
 
 	type TypeStyle = { label: string; color: string; part: string };
-	const TYPE_STYLES: Record<SuccessfulResult['resultParts'][number]['type'], TypeStyle> = {
+	const TYPE_STYLES: Record<ResultPart['type'], TypeStyle> = {
 		original: {
 			label: 'Eredeti',
 			color: cn('text-original'),
@@ -42,8 +42,6 @@
 			part: cn('border-b-2 border-dashed border-removed/50 bg-removed/10 line-through')
 		}
 	};
-
-	type ResultPart = SuccessfulResult['resultParts'][number];
 
 	// mobile Drawer state
 	let activePart = $state<ResultPart | null>(null);

@@ -54,7 +54,9 @@ export const resultType = z.object({
 });
 
 export type Result = z.infer<typeof resultType>;
-export type SuccessfulResult = Result & { error: null };
+export type ResultPart = Result['resultParts'][number];
+
+export type SuccessfulResult = Result & { resultParts: [ResultPart, ...ResultPart[]] };
 
 export const developerPrompt = [
 	[

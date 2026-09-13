@@ -21,6 +21,10 @@
 	// Tailwind 'lg:' matching breakpoint
 	const isDesktop = new MediaQuery('(min-width: 64rem)');
 
+	export function isSuccessful(result: Result): result is SuccessfulResult {
+		return result.resultParts.length > 0;
+	}
+
 	const checkResource = resource(
 		[],
 		async (_, __, { signal }) => {
@@ -36,14 +40,14 @@
 					viewState.appendSummaries(summaries);
 				} else if (event.type === 'result') {
 					const result = JSON.parse(event.data) as Result;
-					if (!result.resultParts?.length) {
+					if (!isSuccessful(result)) {
 						throw new Error(result.error || 'A folyamat nem adott vissza eredményt.');
 					}
-					const successfulResult = result as SuccessfulResult;
+
 					const intermediateSummaries = $state.snapshot(viewState.intermediateSummaries);
-					historyDb.addEntry(input, successfulResult, intermediateSummaries);
-					viewState.currentResult = successfulResult;
-					return successfulResult;
+					historyDb.addEntry(input, result, intermediateSummaries);
+					viewState.currentResult = result;
+					return result;
 				} else if (event.type === 'error') {
 					throw new Error(JSON.parse(event.data));
 				}
