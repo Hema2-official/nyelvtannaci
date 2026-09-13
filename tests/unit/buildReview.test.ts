@@ -3,7 +3,7 @@ import buildReview from '$lib/llm/buildReview';
 import type { Result } from '$lib/llm/promptConfig';
 
 const result: Result = {
-	error: '',
+	error: null,
 	alternatives: [],
 	resultParts: [
 		{ text: 'A ', type: 'original', explanation: '', references: [] },

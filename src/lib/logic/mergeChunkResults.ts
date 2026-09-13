@@ -55,10 +55,12 @@ export default function mergeChunkResults(chunks: Chunk[], results: Result[]): R
 	);
 
 	return {
-		error: results
-			.map((result) => result?.error)
-			.filter(Boolean)
-			.join('; '),
+		// null, not '', so that "no error" is one value everywhere rather than two
+		error:
+			results
+				.map((result) => result?.error)
+				.filter(Boolean)
+				.join('; ') || null,
 		resultParts: mergeAdjacentOriginals(parts),
 		alternatives
 	};

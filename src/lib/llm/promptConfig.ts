@@ -40,7 +40,7 @@ const alternativeType = z.object({
 });
 
 export const resultType = z.object({
-	error: z.string().describe('Error message if correction failed, empty otherwise'),
+	error: z.string().nullable().describe('Error message if correction failed, null otherwise'),
 	resultParts: z
 		.array(resultPartType)
 		.describe(
@@ -54,7 +54,7 @@ export const resultType = z.object({
 });
 
 export type Result = z.infer<typeof resultType>;
-export type SuccessfulResult = Result & { error: '' };
+export type SuccessfulResult = Result & { error: null };
 
 export const developerPrompt = [
 	[
@@ -133,7 +133,7 @@ export const developerPrompt = [
 		 Quote explanations and references from the tools in Hungarian, verbatim, and only from the explanation branch you accepted. Never invent references, and never translate them.
 		 elvalasztas is the exception: it answers in a notation, not in prose. Count with it and write down what you counted ("három tagból áll, hét szótag"), never the raw "mun-ka|-e-rő|-pi-a-ci"; the reader has no idea what the bars mean.
 		 When you apply a correction, carry over the capitalisation of the original text, as long as it stays correct.
-		 Fill the error field only if the correction could not be produced at all; otherwise leave it empty.
+		 Fill the error field only if the correction could not be produced at all; otherwise set it to null.
 		 Leave alternatives empty unless the input really does have more than one correct reading and the text cannot say which was meant - the "régi telefon töltő" case, not a case where you are merely unsure. When it does, resultParts carries the reading you chose and alternatives carries each of the others as a whole corrected text with the plain-Hungarian meaning that distinguishes it.`
 	],
 	[

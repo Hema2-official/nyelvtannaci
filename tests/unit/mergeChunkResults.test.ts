@@ -7,7 +7,7 @@ import splitSentences, { joinChunks } from '$lib/logic/splitSentences';
 import type { Result } from '$lib/llm/promptConfig';
 
 const untouched = (text: string): Result => ({
-	error: '',
+	error: null,
 	resultParts: [originalPart(text)],
 	alternatives: []
 });
@@ -35,8 +35,8 @@ describe('mergeChunkResults', () => {
 		const input = 'Ez jó.\n\nAz is jó.';
 		const chunks = splitSentences(input);
 		const merged = mergeChunkResults(chunks, [
-			{ error: '', resultParts: [originalPart('Ez jó.')], alternatives: [] },
-			{ error: '', resultParts: [originalPart('Az is jó.')], alternatives: [] }
+			{ error: null, resultParts: [originalPart('Ez jó.')], alternatives: [] },
+			{ error: null, resultParts: [originalPart('Az is jó.')], alternatives: [] }
 		]);
 		expect(joined(merged)).toBe(input);
 	});
@@ -46,7 +46,7 @@ describe('mergeChunkResults', () => {
 		const chunks = splitSentences(input);
 		const merged = mergeChunkResults(chunks, [
 			{
-				error: '',
+				error: null,
 				alternatives: [],
 				resultParts: [
 					{ text: 'A ', type: 'original', explanation: '', references: [] },
