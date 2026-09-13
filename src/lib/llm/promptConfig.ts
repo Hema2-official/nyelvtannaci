@@ -181,6 +181,12 @@ export const developerPrompt = [
 		 Parts: "régi " (original), "telefontöltő" (corrected)
 		 Alternatives: text "régitelefon-töltő", meaning "töltő, amely régi telefonokhoz való"
 
+		 Input: "Az iratokat külön szedve tárolják."
+		 Meaning: az iratokat különszedik, és úgy tárolják - a "külön" itt nem mód, hanem a "szed" igekötője.
+		 Tools: kulon_vagy_egybe on "külön szedve" returns two solutions: "külön szedve" (két határozószó, no reference given) and "különszedve" ("az igekötőt és az igenevet egybeírjuk, ha az igekötő a saját igeneve előtt áll", AkH11-131a). Asked about the finite verb it returns one: "külön szed" -> "különszed", because an igekötő standing before its own ige has no second reading. The split branch is what the tool offers for any igenév, not a competing meaning. AkH 12, 120 a) writes the igekötő together with the ige or igenév directly after it, and lists külön among the igekötők.
+		 Parts: "Az iratokat " (original), "különszedve" (corrected), " tárolják." (original)
+		 It comes apart again only when another word stands between the two ("föl sem véve", "meg fogom nézni"), when it follows the verb ("nem nézve oda"), or when the adverb's own literal sense is the contrast ("nem félre állt, hanem középre").
+
 		 Input: "tely"
 		 Tools: helyes-e_igy on "tely" -> "tej"
 		 Parts: "tej" (corrected)

@@ -212,6 +212,20 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'Two identical-looking errors that have to be reached two different ways, added because the register-silence case was the only new one below 5/5. "Nyugati-pályaudvar" is not in the register at all and is settled by kulon_vagy_egybe and AkH12 §190 ("Keleti pályaudvar"); "Margit-hídhoz" is in the register, but only once the rag comes off - asking with it on returns nothing, and asking about "Margit-híd" returns "Margit híd" (AkH12 §181). The trap is that the two look like one job: a model that finds nothing for the first and stops, or answers the second from the register and assumes the first followed the same rule, gets one of them. "hídhoz" keeps its long í (helyes-e_igy rejects "hidhoz"); the shortening is only in "hidat", "hidak".'
 	},
 	{
+		name: 'unseen: külön szedve',
+		input: 'Az ital fajtákat külön szedve vizsgálják-e.',
+		expected: 'Az italfajtákat különszedve vizsgálják-e.',
+		inPrompt: false,
+		note: 'The first case that came in as a user report (2026-09-13), and the shipped prompt got the compound right and the igekötő wrong. AkH12 §120 a): "Ha az igekötő közvetlenül az előtt az ige (vagy igenév) előtt áll, amelyikhez tartozik, egybeírjuk vele", with "szembeszállva" among its own igenév examples, and the list of igekötők inside the rule runs "... közbe, közre, külön, le, meg, ...". So "külön" standing right before its own "szedve" is one word. kulon_vagy_egybe knows this and says so second: it returns "külön szedve" first (a „külön" határozószót és a „szedve" határozószót különírjuk, no reference at all) and "különszedve" second (igekötő + igenév, AkH11-131a). The model took the first branch, which is also the branch matching the input - the Ethernet trap in a new shape. helyes-e_igy cannot break the tie either: it accepts "különszedve" as a word and accepts "külön" and "szedve" as two words. What settles it is asking about the finite verb: kulon_vagy_egybe on "külön szed" returns a single solution, "különszed", with no competing branch, because only the igenév makes the határozószó reading available at all. 1/6 before the Examples section was given that check, 6/6 after; the example there is a different sentence on purpose, so this case still measures the rule rather than recall.'
+	},
+	{
+		name: 'unseen: meg van töltve',
+		input: 'A palack meg van töltve vízzel.',
+		expected: 'A palack meg van töltve vízzel.',
+		inPrompt: false,
+		note: 'The false-positive control for the igekötő rule, and AkH12 §120 c) writes this exact phrase out: "Az igekötő külön szó marad, ha közte és az ige (vagy igenév) között más szó is van", with "megvan húszéves, de: meg van töltve" in the contrast list that follows. A model that learns "igekötő before its igenév goes together" and stops reading writes "megvan töltve" or "megtöltve" here, and kulon_vagy_egybe encourages it: asked about "meg töltve" - the two words it would pull out of the sentence - it answers "megtöltve", because it was never shown the "van" standing between them. 6/6 both before and after that change, and the phrase is deliberately not the one the prompt names among the exceptions.'
+	},
+	{
 		name: 'unseen: minisztérium paragraph',
 		input:
 			'A minisztérium 2024. október 14.-én tartott sajtótájékoztatóján az illetékes államtitkár megerősítette, hogy az Európai Uniós forrásokból támogatott, több napos tovább képzés keretében az egyenlőre még érvényben lévő szabályozást nap-mint-nap felül vizsgálják, és a Petőfi-híd felújításával összefüggő javaslatokat is mielőbb véglegesítik.',
