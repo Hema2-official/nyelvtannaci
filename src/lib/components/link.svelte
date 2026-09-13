@@ -2,7 +2,6 @@
 	import * as Sidebar from '$lib/components/ui/sidebar';
 	import { cn } from '$lib/utils/shadcn';
 	import type { LucideIcon } from '@lucide/svelte';
-	import type { MouseEventHandler } from 'svelte/elements';
 
 	type Props = {
 		Icon: LucideIcon;
@@ -11,12 +10,18 @@
 		description: string;
 	};
 
-	type ButtonProps = Props & { onclick: MouseEventHandler<HTMLButtonElement>; href?: never };
+	type ButtonProps = Props & { onclick: () => void; href?: never };
 	type LinkProps = Props & { href: string; onclick?: never };
 
 	let { onclick, href, Icon, badgeClass, label, description }: ButtonProps | LinkProps = $props();
 
+	const sidebar = Sidebar.useSidebar();
+
 	const isExternal = $derived(href !== undefined && /^[a-z]+:\/\//i.test(href));
+
+	function closeIfMobile() {
+		if (sidebar.isMobile) sidebar.setOpenMobile(false);
+	}
 </script>
 
 {#snippet Contents()}
@@ -39,13 +44,15 @@
 		{#snippet child({ props })}
 			{#if href}
 				<a
+					{...props}
 					{href}
 					target={isExternal ? '_blank' : undefined}
 					rel={isExternal ? 'noopener noreferrer' : undefined}
-					{...props}>{@render Contents()}</a
-				>
+					onclick={closeIfMobile}
+					>{@render Contents()}
+				</a>
 			{:else if onclick}
-				<button {onclick} {...props}>{@render Contents()}</button>
+				<button {...props} {onclick}>{@render Contents()}</button>
 			{/if}
 		{/snippet}
 	</Sidebar.MenuButton>

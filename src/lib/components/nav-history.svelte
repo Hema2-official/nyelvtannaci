@@ -11,11 +11,19 @@
 
 	let open = $state(true);
 
+	const sidebar = Sidebar.useSidebar();
+
 	const allEntries = historyDb.getAll();
 
 	function handleOpen(id: number) {
 		track({ kind: 'history_open' });
 		viewState.openHistory(id);
+		if (sidebar.isMobile) sidebar.setOpenMobile(false);
+	}
+
+	function handleResetSession() {
+		viewState.resetSession();
+		if (sidebar.isMobile) sidebar.setOpenMobile(false);
 	}
 
 	function handleDelete(id: number, e: MouseEvent) {
@@ -28,7 +36,7 @@
 <Sidebar.Group>
 	<Sidebar.Menu>
 		<Sidebar.MenuItem>
-			<Sidebar.MenuButton onclick={() => viewState.resetSession()}>
+			<Sidebar.MenuButton onclick={handleResetSession}>
 				<SquarePenIcon />
 				<span>Tiszta lap</span>
 			</Sidebar.MenuButton>

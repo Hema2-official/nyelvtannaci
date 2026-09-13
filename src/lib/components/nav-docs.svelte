@@ -3,6 +3,12 @@
 	import { page } from '$app/state';
 	import { ArrowLeftIcon } from '@lucide/svelte';
 	import { docsGroups } from '$lib/utils/docsSections';
+
+	const sidebar = Sidebar.useSidebar();
+
+	function closeIfMobile() {
+		if (sidebar.isMobile) sidebar.setOpenMobile(false);
+	}
 </script>
 
 <Sidebar.Group>
@@ -28,7 +34,7 @@
 				<Sidebar.MenuItem>
 					<Sidebar.MenuButton isActive={page.url.hash === `#${id}`}>
 						{#snippet child({ props })}
-							<a href="#{id}" {...props}>
+							<a href="#{id}" {...props} onclick={closeIfMobile}>
 								<Icon />
 								<span>{label}</span>
 							</a>
