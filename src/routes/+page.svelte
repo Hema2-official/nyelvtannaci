@@ -14,6 +14,9 @@
 	import { cn } from '$lib/utils/shadcn';
 	import { viewState } from '$lib/states/ViewState.svelte';
 	import { historyDb } from '$lib/utils/history.svelte';
+	import { errorMessage } from '$lib/utils/errorMessage';
+	import { TriangleAlertIcon } from '@lucide/svelte';
+	import * as Alert from '$lib/components/ui/alert';
 
 	// Tailwind 'lg:' matching breakpoint
 	const isDesktop = new MediaQuery('(min-width: 64rem)');
@@ -70,7 +73,15 @@
 	>
 		<InputSection {checkResource} />
 
-		{#if viewState.currentResult && !checkResource.loading}
+		{#if checkResource.error && !checkResource.loading}
+			<Alert.Root variant="destructive" class="mt-4">
+				<TriangleAlertIcon />
+				<Alert.Title>Valami félrement az ellenőrzés során.</Alert.Title>
+				<Alert.Description>
+					<p>{errorMessage(checkResource.error, 'Ismeretlen hiba történt. Próbáld újra.')}</p>
+				</Alert.Description>
+			</Alert.Root>
+		{:else if viewState.currentResult && !checkResource.loading}
 			<ResultDisplay result={viewState.currentResult} {isDesktop} />
 		{/if}
 	</div>
