@@ -5,7 +5,7 @@
 	import type { Result, SuccessfulResult } from '$lib/llm/promptConfig';
 	import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 	import { parseServerSentEvents } from 'parse-sse';
-	import { resource, watch } from 'runed';
+	import { resource } from 'runed';
 	import { fly } from 'svelte/transition';
 	import ResultDisplay from '$lib/layout/ResultDisplay.svelte';
 	import { MediaQuery } from 'svelte/reactivity';
@@ -36,10 +36,13 @@
 					viewState.appendSummaries(summaries);
 				} else if (event.type === 'result') {
 					const result = JSON.parse(event.data) as Result;
-					if (result.error) throw new Error(result.error);
+					if (!result.resultParts?.length) {
+						throw new Error(result.error || 'A folyamat nem adott vissza eredményt.');
+					}
 					const successfulResult = result as SuccessfulResult;
 					const intermediateSummaries = $state.snapshot(viewState.intermediateSummaries);
 					historyDb.addEntry(input, successfulResult, intermediateSummaries);
+					viewState.currentResult = successfulResult;
 					return successfulResult;
 				} else if (event.type === 'error') {
 					throw new Error(JSON.parse(event.data));
@@ -48,11 +51,6 @@
 		},
 		{ lazy: true }
 	);
-
-	// Move result to ViewState for central management
-	watch([() => checkResource.current], () => {
-		viewState.currentResult = checkResource.current ?? null;
-	});
 </script>
 
 <svelte:head>
