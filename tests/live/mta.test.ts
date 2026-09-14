@@ -104,6 +104,24 @@ describe.sequential('helyes-e_igy', () => {
 		expect(tips).toMatch(/Jelentése: ’.+’/);
 	});
 
+	it('answers the edition question the site actually answers', async () => {
+		// the pair CLAUDE.md is written around, and the one the parser used to flatten
+		const [dropped] = await scrapeHelyesEIgy({ input: 'munkaerő-piaci' });
+		await pause();
+		const [current] = await scrapeHelyesEIgy({ input: 'munkaerőpiaci' });
+
+		expect(dropped.correct).toBe(false);
+		expect(dropped.editions).toBe('AkH11 szerint: helyes, AkH12 szerint: ismeretlen');
+		expect(dropped.suggestions).toContain('munkaerőpiaci');
+
+		expect(current.correct).toBe(true);
+		expect(current.editions).toBe('AkH11 szerint: ismeretlen, AkH12 szerint: helyes');
+
+		// and the reason reaches the reader, not just the model
+		const [summary] = helyesEIgyFunction.summarize!({ input: 'munkaerő-piaci' }, [dropped]);
+		expect(summary.explanation).toBe(dropped.editions);
+	});
+
 	it('keeps the notice about the input separate from the tips', async () => {
 		const [result] = await scrapeHelyesEIgy({ input: 'Nyelvtannaci' });
 

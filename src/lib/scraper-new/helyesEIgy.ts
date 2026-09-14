@@ -12,7 +12,10 @@ export const helyesEIgyParams = z.object({
 
 export type HelyesEIgyResult = {
 	expression: string;
+	/** Correct under AkH 12!! */
 	correct: boolean;
+	/** Edition the tool referenced when it gives more than one */
+	editions?: string;
 	suggestions: string[];
 	tips: string[];
 	notices: string[];
@@ -42,7 +45,7 @@ export async function scrapeHelyesEIgy(
 	//  - div[class^="result-"] (multi, optional): notice about the input as a whole
 	//  - ul.result -> li (multi):
 	//    - textContent.split('„')[1].split('”')[0]: expression
-	//    - unknown="YES": unknown
+	//    - unknown="YES": unknown; "NO": known; "YESNO": known to AkH11 only
 	//    - .suggest_list -> li (multi) textContent.trim(): suggestions
 	//    - .suggest_tips -> li (multi) textContent.trim(): tips
 
@@ -65,7 +68,15 @@ export async function scrapeHelyesEIgy(
 		// find unknown
 		const unknownAttr = resultNode.getAttribute('unknown');
 		if (typeof unknownAttr !== 'string') continue;
-		const correct = unknownAttr.toLowerCase() !== 'yes';
+		const correct = unknownAttr.toLowerCase() === 'no';
+
+		// "AkH11 szerint: helyes AkH12 szerint: ismeretlen"
+		const verdicts = resultNode.textContent
+			?.replace(/\s+/g, ' ')
+			.match(/AkH11 szerint: (\p{L}+).*?AkH12 szerint: (\p{L}+)/u);
+		const editions = verdicts
+			? `AkH11 szerint: ${verdicts[1]}, AkH12 szerint: ${verdicts[2]}`
+			: undefined;
 
 		// parse suggestions and tips
 		const parseLines = (element: HTMLElement | null) =>
@@ -81,7 +92,14 @@ export async function scrapeHelyesEIgy(
 		const suggestions = parseLines(resultNode.querySelector('.suggest_list'));
 		const tips = parseLines(resultNode.querySelector('.suggest_tips'));
 
-		results.push({ expression, correct, suggestions, tips, notices });
+		results.push({
+			expression,
+			correct,
+			...(editions && { editions }),
+			suggestions,
+			tips,
+			notices
+		});
 	}
 
 	if (results.length === 0) throw new Error('No results found: invalid elements in results list');
@@ -96,6 +114,7 @@ function provideSummary(
 		tool: 'helyes-e_igy',
 		expression: result.expression,
 		correct: result.correct,
+		...(result.editions && { explanation: result.editions }),
 		shareLink: generateUrl(args.input)
 	}));
 }

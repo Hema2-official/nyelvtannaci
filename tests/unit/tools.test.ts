@@ -116,6 +116,62 @@ describe('nevkereso input validation', () => {
 });
 
 /**
+ * The dictionary answers in three states and the parser used to read two of them. The third,
+ * `unknown="YESNO"`, is "helyes az AkH11 szerint, ismeretlen az AkH12 szerint" - the state
+ * every word the 2015 revision moved comes back in, and the state that made "munkaerő-piaci"
+ * read as confirmed while the form that replaced it sat in the same answer's suggestions.
+ *
+ * The markup below is verbatim from the site, whitespace included.
+ */
+describe('helyes-e_igy edition verdicts', () => {
+	beforeEach(() => mtaResponseCache.clear());
+	afterEach(() => vi.restoreAllMocks());
+
+	function serve(html: string) {
+		vi.spyOn(scraperAxios, 'get').mockResolvedValue({
+			data: `<ul class="result">${html}</ul>`
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+	}
+
+	it('reads a form the 12th edition dropped as wrong, and says why', async () => {
+		serve(
+			'<li unknown=YESNO>&bdquo;munkaerő-piaci&rdquo;: \n\n\n  <br>\n  <a href="/helyesiras/default/akh11" target="_blank">AkH11</a> szerint: helyes<br>\n  <a href="/helyesiras/default/akh12" target="_blank">AkH12</a> szerint: ismeretlen; javaslatok: <span class="suggest_list">munkaerőpiaci</span>\n\n\n\n\n</li>'
+		);
+
+		const [result] = await scrapeHelyesEIgy({ input: 'munkaerő-piaci' });
+
+		expect(result.correct).toBe(false);
+		expect(result.editions).toBe('AkH11 szerint: helyes, AkH12 szerint: ismeretlen');
+		// the replacement was always in the answer; it just arrived next to a "correct" verdict
+		expect(result.suggestions).toEqual(['munkaerőpiaci']);
+	});
+
+	it('reads a form the 12th edition introduced as right, and says why', async () => {
+		serve(
+			'<li unknown=NO>&bdquo;észszerű&rdquo;: \n\n\n\n  <br>\n  <a href="/helyesiras/default/akh11" target="_blank">AkH11</a> szerint: ismeretlen<br>\n  <a href="/helyesiras/default/akh12" target="_blank">AkH12</a> szerint: helyes\n\n\n\n</li>'
+		);
+
+		const [result] = await scrapeHelyesEIgy({ input: 'észszerű' });
+
+		expect(result.correct).toBe(true);
+		// the half that has to outweigh the reader's memory of "ésszerű"
+		expect(result.editions).toBe('AkH11 szerint: ismeretlen, AkH12 szerint: helyes');
+	});
+
+	it('leaves a plain verdict alone', async () => {
+		serve(
+			'<li unknown=YES>&bdquo;parabén&rdquo;: \n\n\n\n\n  <b>ismeretlen</b>\n  \n    <br>Javaslatok: <span class="suggest_list">arabén, darabén, parajén, aparabén, piarabén</span>\n  \n\n\n</li>'
+		);
+
+		const [result] = await scrapeHelyesEIgy({ input: 'parabén' });
+
+		expect(result.correct).toBe(false);
+		expect(result.editions).toBeUndefined();
+	});
+});
+
+/**
  * The one piece of judgement in the scraper: which of the register's prefix matches spell
  * the letters that were asked about. Everything downstream - the model's decision, the
  * category lookups, the summary - hangs off that flag.
