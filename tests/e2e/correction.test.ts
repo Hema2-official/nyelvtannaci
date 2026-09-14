@@ -153,6 +153,7 @@ describe.sequential('correction flow', () => {
 				id: provider.id,
 				model: provider.model,
 				reasoningEffort: provider.reasoningEffort ?? null,
+				temperature: provider.temperature ?? null,
 				structuredOutputs: provider.structuredOutputs,
 				strictTools: provider.strictTools,
 				extraBody: provider.extraBody ?? null,

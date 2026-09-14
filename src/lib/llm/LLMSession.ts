@@ -178,7 +178,7 @@ class LLMSession<ResultType extends ZodType> {
 		tools: ChatCompletionTool[],
 		responseFormat: ResponseFormatJSONSchema | undefined
 	) {
-		const { client, model, reasoningEffort, extraBody } = getProvider();
+		const { client, model, reasoningEffort, extraBody, temperature } = getProvider();
 
 		const completion = await client.chat.completions.create(
 			{
@@ -186,6 +186,7 @@ class LLMSession<ResultType extends ZodType> {
 				model: model,
 				tools: tools,
 				stream: false,
+				...(typeof temperature === 'number' ? { temperature } : {}),
 				...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
 				...(responseFormat ? { response_format: responseFormat } : {}),
 				...extraBody

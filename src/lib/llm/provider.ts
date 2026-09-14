@@ -78,6 +78,8 @@ export type LLMProvider = {
 	structuredOutputs: boolean;
 	/** Reasoning budget to request; undefined leaves the model on its own default. */
 	reasoningEffort?: string;
+	/** Sampling temperature. */
+	temperature?: number;
 	/** Provider-specific fields merged into every chat-completion request body. */
 	extraBody?: Record<string, unknown>;
 	/** How many model responses a single session may consume. */
@@ -95,6 +97,15 @@ function readBoolean(name: string) {
 	if (['1', 'true', 'yes', 'on'].includes(value)) return true;
 	if (['0', 'false', 'no', 'off'].includes(value)) return false;
 	throw new Error(`${name} must be a boolean ("true" or "false"), got "${value}"`);
+}
+
+function readNumber(name: string, fallback: number | undefined) {
+	const value = read(name);
+	if (value === undefined) return fallback;
+	const parsed = Number.parseFloat(value);
+	if (!Number.isFinite(parsed) || parsed < 0)
+		throw new Error(`${name} must be a non-negative number, got "${value}"`);
+	return parsed;
 }
 
 function readPositiveInt(name: string, fallback: number) {
@@ -183,6 +194,7 @@ function createProvider(): LLMProvider {
 		strictTools,
 		structuredOutputs,
 		reasoningEffort: read('LLM_REASONING_EFFORT'),
+		temperature: readNumber('LLM_TEMPERATURE', 0.6),
 		extraBody: getExtraBody(id),
 		maxTurns: readPositiveInt('SESSION_MAX_TURNS', 25)
 	};
