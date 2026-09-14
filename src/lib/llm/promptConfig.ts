@@ -155,11 +155,7 @@ export const developerPrompt = [
 		 Meaning: az a folyamat, amikor valamit testre szabnak - egy fogalom, nem alkalmi cselekvés.
 		 Tools: kulon_vagy_egybe on "testre szabás" -> "testreszabás"
 		 Parts: "testreszabás" (corrected)
-
-		 Input: "testreszabott"
-		 Meaning: melléknévi igenév, a szerkezet tagjai megőrzik önálló jelentésüket.
-		 Tools: kulon_vagy_egybe on "testre szabott" -> "testre szabott"
-		 Parts: "testre szabott" (corrected)
+		 The igenév goes the other way, and the same pair has to be written both ways: "testreszabott" -> "testre szabott", mert ott a tagok megőrzik önálló jelentésüket.
 
 		 Input: "Részt veszek informatikai, irodalom és matekversenyeken"
 		 Meaning: mindhárom tag a "verseny" szóhoz kapcsolódik, tehát "informatikai verseny", "irodalomverseny", "matekverseny".
