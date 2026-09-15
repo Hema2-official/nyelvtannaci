@@ -20,8 +20,12 @@ export type PossibleExplanation = {
 };
 export type KulonVagyEgybeResult = {
 	solution: string;
+	outdated?: true;
 	possibleExplanations: PossibleExplanation[];
 };
+
+/** The site's own wording for a spelling the 12th edition dropped. */
+const OUTDATED_MARKER = 'Már nem érvényes írásmód';
 
 function generateUrl(input: string) {
 	return scraperAxios.getUri({
@@ -38,6 +42,26 @@ export async function scrapeKulonVagyEgybe(
 	if (!input) throw new Error('Input is required');
 	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
 
+	const results = await fetchSolutions(input);
+
+	const query = input.trim();
+	for (const result of results) {
+		if (result.possibleExplanations.some((e) => e.steps.length || e.help)) continue;
+		if (!result.solution.includes(' ') || result.solution === query) continue;
+
+		// Re-run query when there may be missing information because of the query's nature
+		const reasked = await fetchSolutions(result.solution).catch(() => []);
+		const match = reasked.find((r) => r.solution === result.solution);
+		if (!match) continue;
+
+		result.possibleExplanations = match.possibleExplanations;
+		if (match.outdated) result.outdated = true;
+	}
+
+	return results;
+}
+
+async function fetchSolutions(input: string): Promise<KulonVagyEgybeResult[]> {
 	const html = await getCached(generateUrl(input));
 	const doc = parse(html);
 
@@ -113,7 +137,14 @@ export async function scrapeKulonVagyEgybe(
 			}
 			possibleExplanations.push({ help, steps });
 		}
-		results.push({ solution, possibleExplanations });
+		const outdated = possibleExplanations.some((explanation) =>
+			explanation.steps.some((step) => step.action.includes(OUTDATED_MARKER))
+		);
+		results.push({
+			solution,
+			...(outdated && { outdated: true as const }),
+			possibleExplanations
+		});
 	}
 	if (results.length === 0) throw new Error('No results found: invalid elements in results list');
 	return results;

@@ -116,6 +116,46 @@ describe('nevkereso input validation', () => {
 });
 
 /**
+ * 15% of real `kulon_vagy_egybe` responses carry "Már nem érvényes írásmód" - the site saying
+ * a spelling belongs to the 11th edition - buried in a sentence of Hungarian prose. It is a
+ * field now, so the model does not have to notice it.
+ */
+describe('kulon_vagy_egybe outdated spellings', () => {
+	beforeEach(() => mtaResponseCache.clear());
+	afterEach(() => vi.restoreAllMocks());
+
+	/** The site's markup, trimmed to what the parser reads. */
+	function serve(solutions: [string, string][]) {
+		const html = solutions
+			.map(
+				([solution, action]) =>
+					`<div class="solution"><div class="sol_summary">${solution}</div>` +
+					`<div class="explanation"><div class="step_body">${action} [<a class="alink" href="/x">AkH11-125b</a>]</div></div></div>`
+			)
+			.join('');
+		vi.spyOn(scraperAxios, 'get').mockResolvedValue({
+			data: `<div id="result_xhtml">${html}</div>`
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		} as any);
+	}
+
+	it('marks the branch the 12th edition dropped and leaves the current one alone', async () => {
+		serve([
+			['cserben hagy', 'Az AkH12 szerint a raggal jelölt határozós kapcsolatok különírandók.'],
+			[
+				'cserbenhagy',
+				'Már nem érvényes írásmód. Az AkH11 szerint bizonyos jelölt határozós kapcsolatok összetétellé váltak.'
+			]
+		]);
+
+		const results = await scrapeKulonVagyEgybe({ input: 'cserben hagy' });
+
+		expect(results.find((r) => r.solution === 'cserben hagy')?.outdated).toBeUndefined();
+		expect(results.find((r) => r.solution === 'cserbenhagy')?.outdated).toBe(true);
+	});
+});
+
+/**
  * The dictionary answers in three states and the parser used to read two of them. The third,
  * `unknown="YESNO"`, is "helyes az AkH11 szerint, ismeretlen az AkH12 szerint" - the state
  * every word the 2015 revision moved comes back in, and the state that made "munkaerő-piaci"

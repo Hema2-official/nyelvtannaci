@@ -77,6 +77,37 @@ describe.sequential('kulon_vagy_egybe', () => {
 	});
 });
 
+describe.sequential('kulon_vagy_egybe enrichment', () => {
+	afterEach(pause);
+
+	it('re-asks a solution the site returned without reasoning', async () => {
+		// asked the way the input spells it, the correct branch comes back bare and the wrong one
+		// explained - the shape that had this case failing 4/12
+		const results = await scrapeKulonVagyEgybe({ input: 'légiforgalmi társaság' });
+		const correct = results.find((result) => result.solution === 'légi forgalmi társaság');
+
+		expect(correct).toBeDefined();
+		const steps = correct!.possibleExplanations.flatMap((explanation) => explanation.steps);
+		expect(steps.length).toBeGreaterThan(0);
+		expect(steps.map((step) => step.action).join(' ')).toContain('AkH12');
+	});
+
+	it('marks a spelling the 12th edition dropped', async () => {
+		const results = await scrapeKulonVagyEgybe({ input: 'cserben hagy' });
+
+		expect(results.find((result) => result.solution === 'cserbenhagy')?.outdated).toBe(true);
+		expect(results.find((result) => result.solution === 'cserben hagy')?.outdated).toBeUndefined();
+	});
+
+	it('does not re-ask a single joined token, which the site answers not at all', async () => {
+		// both branches come back bare here and no re-query can fix it: "rosszulesett" on its own
+		// is "(no result)". The scraper has to leave it rather than throw the answer away.
+		const results = await scrapeKulonVagyEgybe({ input: 'rosszul esett' });
+
+		expect(results.map((result) => result.solution)).toContain('rosszulesett');
+	});
+});
+
 describe.sequential('helyes-e_igy', () => {
 	afterEach(pause);
 
