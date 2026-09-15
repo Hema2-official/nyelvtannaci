@@ -183,6 +183,12 @@ export const developerPrompt = [
 		 Parts: "Az iratokat " (original), "különszedve" (corrected), " tárolják." (original)
 		 It comes apart again only when another word stands between the two ("föl sem véve", "meg fogom nézni"), when it follows the verb ("nem nézve oda"), or when the adverb's own literal sense is the contrast ("nem félre állt, hanem középre").
 
+		 Input: "A légiforgalmi társaság új járatot indít."
+		 Meaning: új járatot indít egy bizonyos társaság, amely légi forgalmat bonyolít.
+		 Tools: helyes-e_igy on "légiforgalmi" -> ismeretlen, first suggestion "légi forgalmi". kulon_vagy_egybe on the whole phrase separated, "légi forgalmi társaság" -> "Az AkH12 szerint a »légi forgalmi« mint minőségjelzős szerkezet különírandó" (AkH12-105); the joined branch comes back marked outdated, "Már nem érvényes írásmód. Az AkH11 a »légiforgalmi« szót hagyományosan egybeírandónak javasolta".
+		 Thinking: two things look like evidence for leaving it alone and neither is. elvalasztas answers "lé-gi|-for-gal-mi", but it marks a seam in whatever you concatenate - "sóskifli", "csodaszép" and "papírzsebkendő" all come back with one and all three are wrong. It says where members would meet if the word existed, never that it does. And kulon_vagy_egybe asked about the fragment "légi forgalmi" answers "légiforgalmi", the opposite of what it says about the phrase the sentence actually contains. Ask it about the whole phrase, and prefer that answer to the fragment's.
+		 Parts: "A " (original), "légi forgalmi" (corrected), " társaság új járatot indít." (original)
+
 		 Input: "tely"
 		 Tools: helyes-e_igy on "tely" -> "tej"
 		 Parts: "tej" (corrected)
