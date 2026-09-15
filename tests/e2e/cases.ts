@@ -226,6 +226,76 @@ export const correctionCases: CorrectionCase[] = [
 		note: 'The false-positive control for the igekötő rule, and AkH12 §120 c) writes this exact phrase out: "Az igekötő külön szó marad, ha közte és az ige (vagy igenév) között más szó is van", with "megvan húszéves, de: meg van töltve" in the contrast list that follows. A model that learns "igekötő before its igenév goes together" and stops reading writes "megvan töltve" or "megtöltve" here, and kulon_vagy_egybe encourages it: asked about "meg töltve" - the two words it would pull out of the sentence - it answers "megtöltve", because it was never shown the "van" standing between them. 6/6 both before and after that change, and the phrase is deliberately not the one the prompt names among the exceptions.'
 	},
 	{
+		name: 'AkH12: számonkér',
+		input: 'A tanár számon kérte a házi feladatot.',
+		expected: 'A tanár számonkérte a házi feladatot.',
+		inPrompt: true,
+		note: 'AkH12-135 writes "számonkér" together as a traditional compound, and kulon_vagy_egybe marks the separated form "Már nem érvényes írásmód. Az AkH11 szerint állandósult szókapcsolatról van szó" (AkH11-125a). The trap is the query shape rather than the branch: asked with the rag on, "számon kérte" returns {"error":"No results found"}, and a model that does not re-ask about "számon kér" keeps the input. In prompt because the Coverage section now names that exact pair. 8/8 on both arms of the 2026-09-13 A/B; the one early failure was a run that took the tool error as silence.'
+	},
+	{
+		name: 'AkH12: lágytojás',
+		input: 'Reggelire lágy tojást eszem.',
+		expected: 'Reggelire lágytojást eszem.',
+		inPrompt: false,
+		note: 'AkH12-105 with AkH12-95: the meaning changed, so this one is written together, reversing AkH11-107a - the opposite direction to "cserben hagy" under the same revision. Asked about "lágy tojás" the tool returns both branches and marks the separated one as no longer valid; asked about "lágy tojást" the same branch comes back as a plain minőségjelzős explanation with the edition marker gone, and that is the branch matching the input. 4/8 before the Coverage bullet asked for the dictionary form, 7/8 after.'
+	},
+	{
+		name: 'AkH12: cserben hagy',
+		input: 'A barátom cserbenhagyott a nehéz helyzetben.',
+		expected: 'A barátom cserben hagyott a nehéz helyzetben.',
+		inPrompt: false,
+		note: 'AkH12-106: the 12th edition separates raggal jelölt határozós kapcsolatok, reversing AkH11-125b, and kulon_vagy_egybe says so itself - the joined branch comes back as "Már nem érvényes írásmód". "útba igazít" and "véghez visz" are the same rule and passed alongside it on a single run each; one of the three is kept so the suite measures the rule once rather than three times. Then it measured 1/5 on 2026-09-14, the worst of the ten added that day: the single pass it was promoted on was the fluke, not the rule. The failures keep "cserbenhagyott" whole.'
+	},
+	{
+		name: 'AkH12: észszerű',
+		input: 'Ez a döntés nem volt ésszerű.',
+		expected: 'Ez a döntés nem volt észszerű.',
+		inPrompt: false,
+		note: 'AkH12-94 and 132 treat -szerű as an összetételi utótag, so the sz+sz no longer simplifies. helyes-e_igy gives the clearest signal it has: "ésszerű" is ismeretlen with exactly one suggestion, "észszerű", and the suggested form answers "AkH11 szerint: ismeretlen AkH12 szerint: helyes" - the edition line the scraper now carries out in `editions`. What this measures is whether a tool rejection outweighs the model\'s own memory of a word that was correct until 2015. Not always: 6/8 on both arms of the A/B.'
+	},
+	{
+		name: 'unseen: légi forgalmi',
+		input: 'Tavaly új légiforgalmi szabályok léptek életbe.',
+		expected: 'Tavaly új légi forgalmi szabályok léptek életbe.',
+		inPrompt: false,
+		note: 'AkH12-105 separates "légi forgalmi" as a minőségjelzős szerkezet; the joined form belongs to the 11th edition, and where a head noun gives kulon_vagy_egybe two branches it marks that one "Már nem érvényes írásmód". For this input it returns a single separated solution, so the whole difficulty is whether the model asks about the phrase at all: the two-word fragment "légi forgalmi" answers "légiforgalmi" and inverts everything. helyes-e_igy rejects "légiforgalmi" with "légi forgalmi" first. Kept while it fails, because the note is the only place the contradiction is written down. With the sentence "A légiforgalmi társaság új járatot indít." this measured 0/39 on 2026-09-14 across four prompt rewrites, the scraper enrichment, and low against medium reasoning effort - not flaky, simply failed. The logs give the reason, and it is a decision failure rather than a missing fact: handed correct:false with the right suggestion AND the AkH12-105 branch with its reasoning, the model returned the sentence untouched with no explanation. When it argued at all it cited elvalasztas marking a seam in "lé-gi|-for-gal-mi" - which that tool does for any concatenation, "sóskifli" and "papírzsebkendő" included. A worked example naming both traps went into the prompt on 2026-09-15, unmeasured; it uses the társaság sentence, so this case took a different one to keep measuring the rule rather than recall.'
+	},
+	{
+		name: 'unseen: vitaminhiány-betegség',
+		input: 'A vitaminhiánybetegség tünetei lassan jelentkeznek.',
+		expected: 'A vitaminhiány-betegség tünetei lassan jelentkeznek.',
+		inPrompt: false,
+		note: 'AkH12-139 measured on a word the prompt has never seen: vi-ta-min-hi-ány-be-teg-ség is eight syllables over three members, so the hyphen goes at the main boundary, and kulon_vagy_egybe states the rule itself. Its control is "állóképességteszt" - six syllables, stays solid - which is not kept separately because "munkaerőpiaci stays solid" already guards that direction. 5/5 on 2026-09-14.'
+	},
+	{
+		name: 'unseen: meg tudják javítani',
+		input: 'A szerelők megtudják javítani a mosógépet.',
+		expected: 'A szerelők meg tudják javítani a mosógépet.',
+		inPrompt: false,
+		note: 'AkH12-120 c): the igekötő stays a separate word when another word stands between it and its verb. The counterpart of "meg van töltve" and harder than it, because "megtudják" is itself a correct word (megtud), so helyes-e_igy confirms it and only the sentence rules it out - the szerelők are not finding anything out. kulon_vagy_egybe asked about "meg tudják javítani" returns the separated form with the rule (AkH11-131c). 5/5 on 2026-09-14.'
+	},
+	{
+		name: 'unseen: C-vitamin-forrás',
+		input: 'A csipkebogyó kiváló C vitamin forrás.',
+		expected: 'A csipkebogyó kiváló C-vitamin-forrás.',
+		inPrompt: false,
+		note: 'Four solutions from one query, the most the tool ever offers: "C vitamin forrás", "C vitaminforrás", "C-vitamin-forrás" and "C-vitaminforrás", each with its own reasoning. Getting there takes two decisions: the betűjel marks a distinct kind rather than one of many alike (AkH12-283), and a further tag joined to an already hyphenated compound is hyphenated in turn rather than written into it (AkH12-110). 2/5 on 2026-09-14, at about a minute a session - the slowest case here, and promoted on a single passing run that turned out not to be typical.'
+	},
+	{
+		name: 'unseen: 15%-kal',
+		input: 'Az árak 15 %-al emelkedtek tavaly.',
+		expected: 'Az árak 15%-kal emelkedtek tavaly.',
+		inPrompt: false,
+		note: 'Two errors in one place, and AkH12-82 f) writes the answer into its own example list: "4-gyel, 15%-kal, Bp.-tel, DNS-sel". The sign takes no space before it, and -val assimilates to how the sign is read aloud, the same reasoning that puts "az" before "5. helyen". No tool answers this: datumok and szamok take neither a percentage nor a sign, so it measures what the model knows rather than what it can look up. 5/5 on 2026-09-14.'
+	},
+	{
+		name: 'unseen: munkaerő-piaci',
+		input: 'Rossz a munkaerő-piaci helyzet.',
+		expected: 'Rossz a munkaerőpiaci helyzet.',
+		inPrompt: false,
+		note: 'The inverse of "munkaerőpiaci stays solid", and a guard on the scraper rather than on the prompt. helyes-e_igy answers this form with unknown="YESNO" - "AkH11 szerint: helyes, AkH12 szerint: ismeretlen; javaslatok: munkaerőpiaci" - and the parser read that third state as correct until 2026-09-13, so the tool reported the 11th-edition form as right while carrying its replacement in the same answer. If this case starts failing, read helyesEIgy.ts before reading the prompt. 4/5 before the parser fix, 5/5 after: step 6\'s syllable measurement was already carrying most of it.'
+	},
+	{
 		name: 'unseen: minisztérium paragraph',
 		input:
 			'A minisztérium 2024. október 14.-én tartott sajtótájékoztatóján az illetékes államtitkár megerősítette, hogy az Európai Uniós forrásokból támogatott, több napos tovább képzés keretében az egyenlőre még érvényben lévő szabályozást nap-mint-nap felül vizsgálják, és a Petőfi-híd felújításával összefüggő javaslatokat is mielőbb véglegesítik.',
