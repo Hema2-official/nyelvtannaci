@@ -5,6 +5,7 @@
 	import type { Result, SuccessfulResult } from '$lib/llm/promptConfig';
 	import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 	import { parseServerSentEvents } from 'parse-sse';
+	import { iterateStream } from '$lib/utils/iterateStream';
 	import { resource } from 'runed';
 	import { fly } from 'svelte/transition';
 	import ResultDisplay from '$lib/layout/ResultDisplay.svelte';
@@ -32,7 +33,7 @@
 			const input = $state.snapshot(viewState.currentInput);
 			const response = await check(input, { signal });
 
-			for await (const event of parseServerSentEvents(response)) {
+			for await (const event of iterateStream(parseServerSentEvents(response))) {
 				if (event.type === 'init') {
 					viewState.showAnalysis = true;
 				} else if (event.type === 'intermediate') {
