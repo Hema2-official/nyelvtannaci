@@ -6,17 +6,20 @@
 	import { FlagIcon } from '@lucide/svelte';
 	import { PersistedState } from 'runed';
 	import { cn } from '$lib/utils/shadcn';
+	import { readerOptions } from '$lib/utils/docsSections';
+	import { isReaderType, type ReaderType } from '$lib/utils/docsVocabulary';
+	import { reportReader, trackDocs } from '$lib/utils/docsTracking.svelte';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
 
-	type ReaderType = 'normal' | 'technical';
-
-	const readerOptions: { value: ReaderType; label: string }[] = [
-		{ value: 'normal', label: 'Mindenkinek' },
-		{ value: 'technical', label: 'Hozzáértőknek' }
-	];
 	let reader: PersistedState<ReaderType> = new PersistedState('reader-type', 'normal');
+	let article = $state<HTMLElement>();
+
+	trackDocs(
+		() => article,
+		() => reader.current
+	);
 </script>
 
 <svelte:head>
@@ -30,7 +33,7 @@
 	</a>
 {/snippet}
 
-<div class="flex w-full max-w-3xl flex-col gap-8 px-6 pt-4 pb-16 md:pt-12">
+<div bind:this={article} class="flex w-full max-w-3xl flex-col gap-8 px-6 pt-4 pb-16 md:pt-12">
 	<DocsGroupTitle id="tudnivalok" />
 
 	<DocsSection id="mi-ez">
@@ -101,8 +104,8 @@
 			</li>
 			<li>
 				<b>Névtelen statisztikát gyűjtünk.</b> Mérjük például, hogy hány ellenőrzés indul és mennyi ideig
-				tartanak. Felhasználói azonosítót, IP-címet, sütit vagy beírt szöveget nem tárolunk. A mért statisztikát
-				90 napig tároljuk az EU-ban.
+				tartanak, illetve a dokumentáció melyik részét meddig olvassák. Felhasználói azonosítót, IP-címet,
+				sütit vagy beírt szöveget nem tárolunk. A mért statisztikát 90 napig tároljuk az EU-ban.
 			</li>
 			<li>
 				<b>A visszajelzés kivétel.</b> Az önkéntesen elküldött hibajelentéseket és visszajelzéseket minden
@@ -117,7 +120,12 @@
 	</DocsSection>
 
 	<DocsGroupTitle id="technikai-reszletek">
-		<Select.Root type="single" items={readerOptions} bind:value={reader.current}>
+		<Select.Root
+			type="single"
+			items={readerOptions}
+			bind:value={reader.current}
+			onValueChange={(to) => isReaderType(to) && reportReader(to)}
+		>
 			<Select.Trigger class="w-45"><Select.Value /></Select.Trigger>
 			<Select.Content>
 				<Select.Group>

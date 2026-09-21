@@ -1,4 +1,5 @@
 import type { LucideIcon } from '@lucide/svelte';
+import type { DocsSectionId, ReaderType } from './docsVocabulary';
 import {
 	CogIcon,
 	ContainerIcon,
@@ -10,7 +11,7 @@ import {
 
 export type DocsSection = {
 	/** key and hash for URL navigation */
-	id: string;
+	id: DocsSectionId;
 	label: string;
 	Icon: LucideIcon;
 };
@@ -45,4 +46,9 @@ export const docsGroups = [
 export const docsSections = docsGroups.flatMap<DocsSection>((group) => group.sections);
 
 export type DocsGroupId = (typeof docsGroups)[number]['id'];
-export type DocsSectionId = (typeof docsGroups)[number]['sections'][number]['id'];
+export type { DocsSectionId } from './docsVocabulary';
+
+export const readerOptions: { value: ReaderType; label: string }[] = [
+	{ value: 'normal', label: 'Mindenkinek' },
+	{ value: 'technical', label: 'Hozzáértőknek' }
+];
