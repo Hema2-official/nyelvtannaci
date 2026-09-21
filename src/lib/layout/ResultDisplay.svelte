@@ -157,7 +157,7 @@ unwanted gaps between parts (to keep the punctuation and whatnot intact). -->
 			</Tooltip.Provider>
 		</div>
 		<Card.Root class="w-full" size="sm">
-			<Card.Content class="text-base whitespace-pre-wrap">
+			<Card.Content class="block text-base whitespace-pre-wrap">
 				{@render TextPartsDisplay()}
 			</Card.Content>
 
