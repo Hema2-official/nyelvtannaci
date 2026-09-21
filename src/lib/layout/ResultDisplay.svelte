@@ -80,14 +80,14 @@
 			hoverAnchorEl = target;
 			activePart = part;
 		} else {
-			openHover(target, part);
+			openHover(target, part).catch(() => {});
 		}
 	}
 
 	function handleMouseLeave() {
 		if (!isDesktop.current) return;
 		openHover.cancel();
-		closeHover();
+		closeHover().catch(() => {});
 	}
 
 	function handlePartClick(part: ResultPart) {
