@@ -58,6 +58,12 @@ export type ResultPart = Result['resultParts'][number];
 
 export type SuccessfulResult = Result & { resultParts: [ResultPart, ...ResultPart[]] };
 
+export function normalizeResultError(error: string | null | undefined): string | null {
+	const trimmed = error?.trim();
+	if (!trimmed) return null;
+	return /^(null|undefined)$/i.test(trimmed) ? null : trimmed;
+}
+
 export const developerPrompt = [
 	[
 		'Task',

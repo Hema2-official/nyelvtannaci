@@ -1,6 +1,12 @@
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import LLMSession from './LLMSession';
-import { availableFunctions, developerPrompt, resultType, type Result } from './promptConfig';
+import {
+	availableFunctions,
+	developerPrompt,
+	normalizeResultError,
+	resultType,
+	type Result
+} from './promptConfig';
 import checkResultInvariants from '../logic/resultInvariants';
 import buildReview from './buildReview';
 import splitSentences from '../logic/splitSentences';
@@ -38,7 +44,8 @@ export async function runSingleSession(
 
 	await initCallback?.();
 
-	return (await session.getResult()) as Result;
+	const answered = (await session.getResult()) as Result;
+	return { ...answered, error: normalizeResultError(answered.error) };
 }
 
 /** Runs `tasks` with at most `limit` in flight, keeping the results in order. */
