@@ -183,6 +183,12 @@ export const developerPrompt = [
 		 Parts: "Az iratokat " (original), "különszedve" (corrected), " tárolják." (original)
 		 It comes apart again only when another word stands between the two ("föl sem véve", "meg fogom nézni"), when it follows the verb ("nem nézve oda"), or when the adverb's own literal sense is the contrast ("nem félre állt, hanem középre").
 
+		 Input: "Meg e jött a csomag?"
+		 Meaning: azt kérdezi, megjött-e a csomag; az "e" a kérdő szócska, és az állítmányhoz tartozik.
+		 Tools: kulon_vagy_egybe on "meg jött" -> "megjött"; about the particle it has nothing, every shape comes back empty or a no-result error. helyes-e_igy answers helyes to anything with -e appended ("meg-e", "kutya-e"), so it never places it either.
+		 Thinking: AkH 12, 263. h) hyphenates the -e to the word before it, whichever that is: the rule spells the particle, it does not place it. Its place is the állítmány, and moving it there is a word form, not a rewrite. "nem-e" is right only where "nem" is itself the állítmány ("- Nem láttam. - Nem-e?"). The mutató névmás "e" is a different word ("e kérdésre", "e tekintetben", as AkH writes itself): it asks nothing, joins to nothing, and is not to be expanded to "erre a".
+		 Parts: "Megjött-e" (corrected), " a csomag?" (original)
+
 		 Input: "A légiforgalmi társaság új járatot indít."
 		 Meaning: új járatot indít egy bizonyos társaság, amely légi forgalmat bonyolít.
 		 Tools: helyes-e_igy on "légiforgalmi" -> ismeretlen, first suggestion "légi forgalmi". kulon_vagy_egybe on the whole phrase separated, "légi forgalmi társaság" -> "Az AkH12 szerint a »légi forgalmi« mint minőségjelzős szerkezet különírandó" (AkH12-105); the joined branch comes back marked outdated, "Már nem érvényes írásmód. Az AkH11 a »légiforgalmi« szót hagyományosan egybeírandónak javasolta".
