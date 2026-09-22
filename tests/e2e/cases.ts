@@ -100,10 +100,24 @@ export const correctionCases: CorrectionCase[] = [
 	},
 	{
 		name: 'unseen: number hyphen',
-		input: 'Kétezerhuszonnégy nyarán költöztünk.',
-		expected: 'Kétezer-huszonnégy nyarán költöztünk.',
+		input: 'Kétezerhuszonnégy forintot fizettünk a könyvért.',
+		expected: 'Kétezer-huszonnégy forintot fizettünk a könyvért.',
 		inPrompt: false,
-		note: 'Written out in letters, a number above 2000 is broken with a hyphen at the thousand boundary. szamok on "2024" gives "kétezer-huszonnégy"; the model has to recognise the letters as a number first, and ask with digits.'
+		note: 'Written out in letters, a number above kétezer is broken with a hyphen at the thousand boundary (AkH12-291a). szamok on "2024" gives "kétezer-huszonnégy"; the model has to recognise the letters as a number first, and ask with digits. The input was "Kétezerhuszonnégy nyarán költöztünk." until 2026-09-22, and that was a wrong expected value of the "munkaerő-piaci" kind: 291. a) excepts years from the segmentation in the same sentence that states it, so the case was teaching the model to break a year. A sum of money is a plain cardinal, which is where the rule does apply; the year half is measured by "unseen: year in letters". 8/8 on both arms of the 2026-09-22 measurement, which is what a control looks like when the edit beside it is doing its job.'
+	},
+	{
+		name: 'unseen: quantity beside a year',
+		input: 'A 2024-es programra kétezerhuszonnégy fiatal jelentkezett.',
+		expected: 'A 2024-es programra kétezer-huszonnégy fiatal jelentkezett.',
+		inPrompt: false,
+		note: 'The control written for the year exception rather than after it. AkH12-291a excepts years from the segmentation, and this number is not one: it counts applicants, so the hyphen stays. What makes it a trap is the year standing next to it - in the one failure the paragraph case showed on the edited prompt, the model read "kétezerhuszonnégy" as a year because a literal 2024 appeared earlier in the same text, and left it solid. A model taught the exception has to keep the test for which side it is on: az évszám azt mondja meg, melyik évben, a mennyiség azt, hányat. Its pair is "unseen: year in letters"; its bigger, slower version is the paragraph case, which carries the same quantity under competition from three other errors. 5/5 on both arms of that measurement, so as an instrument it discriminates nothing on its own: the leak it was written for needs the competition of the paragraph case to appear at all. Kept as the cheap guard, since the next edit to the year example is exactly the kind that would break it quietly.'
+	},
+	{
+		name: 'unseen: year in letters',
+		input: 'Kétezerhuszonhat nyarán költöztünk.',
+		expected: 'Kétezerhuszonhat nyarán költöztünk.',
+		inPrompt: false,
+		note: 'AkH12-291a states the segmentation rule and its exception in one breath: "Kétezren felül (kivéve az évszámokat), ha az ezres után a szám még folytatódik, az összetett számnevet a hátulról számolt szokásos hármas számcsoportok szerint tagoljuk, és a csoportok közé kötőjelet teszünk", closing its example list with "de: kétezertizennégy májusában" - a year in letters, written solid, followed by a month the way this sentence is followed by "nyarán". The tools contradict each other and neither is wrong: helyes-e_igy accepts "kétezerhuszonhat" (it is a word), while szamok on "2026" answers "kétezer-huszonhat, kettőezer-huszonhat" because it has no year mode at all - its list is the correct answer to a question this sentence is not asking, which is what makes the Coverage rule "right if it matches one of them, wrong if it matches none" fail here.'
 	},
 	{
 		name: 'unseen: article before a digit',
@@ -324,6 +338,27 @@ export const correctionCases: CorrectionCase[] = [
 		expected: 'Nem tudok válaszolni e kérdésre.',
 		inPrompt: false,
 		note: 'The other false-positive direction. This "e" is the mutató névmás ("e kérdésre" = "erre a kérdésre"), a word of its own rather than the kérdő szócska, so nothing hyphenates to anything. It stands straight after "válaszolni", which is where a rule phrased as "the -e joins the word before it" would put a hyphen, turning a statement into "válaszolni-e kérdésre". The sentence is otherwise clean; the trap only goes live once the prompt says anything about -e. It earned its place on its first outing, and not through the trap described above. The first version of the worked example, without the clause naming the mutató névmás, took this case from 15/15 to 2/5: all three failures rewrote "e kérdésre" into "erre a kérdésre", arguing the bare "e" survives only in fossilised phrases. AkH 12 writes "e hangok", "e kötőszók" and "e tekintetben" in its own prose, so that is wrong on the facts, and it is a rewrite besides. With the clause added, 10/10.'
+	},
+	{
+		name: 'unseen: surname keeps spelling',
+		input: 'A Gombocz Zoltán terem foglalt.',
+		expected: 'A Gombocz Zoltán terem foglalt.',
+		inPrompt: false,
+		note: 'AkH12-190 writes this name into its own example list - "Gombocz Zoltán terem (tanterem neve)" - among the megnevezések where the tulajdonnévi tag keeps its capitals and the értelmező köznévi tag is written separately and lowercase. The surname is the trap. AkH12-154 lists it among the family names that keep a traditional spelling against the modern one ("Bíró, Budai, Gál, Gombóc, Hajdú, Kis, Kulcsár, Miskolci ... azonban: Biró, Buday, Gaál, Gombocz, Hajdu, Kiss, Kultsár, Miskolczy"), so regularising one is not a correction: it is a different name, and the rule calls the spelling tiszteletben tartandó. nevkereso invites it anyway. Its index ignores accents, so "Gombocz" answers correct:true but explains "A névtár több alakot is ismer: Gombocz, Gombócz, Gómbócz" - three separate vezetéknév entries - and "Gombocz Zoltán", the shape Coverage asks for, finds only "Gombócz Zoltán utca", which is not the thing the text is about. helyes-e_igy is the guard that works: "Gombocz" helyes, "Gombócz" ismeretlen. The third user report (2026-09-22), where the answer came back "Gombócz Zoltán terem" with the several-forms note beside it. Measured 2026-09-22, arms alternating over seven blocks: 5/7 on both arms, so the sentence about AkH12-154 in the prompt bought nothing measurable and the case is kept for the rule rather than for the prompt. Every failure on either arm is "Gombocz Zoltán-terem", the hyphen rather than the accent: in twelve sessions on deepseek-v4.1-flash the surname itself was never touched, so the reported "Gombócz" is either rarer than that or belongs to another model.'
+	},
+	{
+		name: 'unseen: -i derivative lowercase',
+		input: 'Az Arany-patak völgyi ösvényt lezárták.',
+		expected: 'Az arany-patak-völgyi ösvényt lezárták.',
+		inPrompt: false,
+		note: 'AkH12-177b builds the three-element name and gives this pair in its own table: "Arany-patak-völgy" -> "arany-patak-völgyi". In an -i derivative the hyphens stay and every tag that is not itself a proper name goes lowercase, the first one included - 175. a) "Arany-patak" -> "arany-pataki", 177. a) "Rohonci-Arany-patak" -> "rohonci-arany-pataki" - while a genuine proper-name tag keeps its capital ("Holt-Tisza-berek" -> "holt-Tisza-bereki", "Belső-János-dűlő" -> "belső-János-dűlői"). nevkereso settles it in one call: the register holds exactly one entry spelling these letters, "arany-patak-völgyi", tagged "-i képzős alak", and answers correct:false. What this measures is whether the lowercase survives the Result rule that says to carry the original capitalisation over, since here it does not stay correct. The third user report (2026-09-22) was the register-silent version of the same thing, "Alsó-arany pataki" -> "Alsó-arany-pataki": the hyphen went in and the capital stayed. The suggestion in the report, "alsó-Arany-pataki", is ruled out for this name by 175. a), where AkH lowercases "arany" itself - it is a közszói tag here, not the poet. Not to be confused with the institution-like names of 190, whose -i derivative keeps both the capitals and the spacing ("Keleti pályaudvari"). Measured 2026-09-22, arms alternating over seven blocks: 2/7 on the shipped prompt against 6/7 once the Examples section carried the AkH pairs (1/5 on an earlier unpaired run of the same prompt, which is the noise floor rather than a second measurement). Every failure is the same string, "Az Arany-patak-völgyi": the hyphen goes in and the capital stays.'
+	},
+	{
+		name: 'unseen: sörös pohár',
+		input: 'sörös pohár',
+		expected: 'sörös pohár',
+		inPrompt: false,
+		note: 'AkH12-105 carries "söröspohár (= sörnek való pohár)" among the pairs written solid because the whole means more than its members, and the same rule writes "érett gyümölcs" separately. kulon_vagy_egybe returns both branches with the meanings spelled out - "Ha a jelentés ’pohár, amelyben sört tárolnak vagy sörös lett’, különírást alkalmazunk" against "Ha a jelentés ’sör tárolására használt pohár’, a szót egybeírjuk" - so both spellings are correct Hungarian and only a meaning decides, which a bare fragment does not carry. The input already spells one of them: the writer chose, and there is nothing to correct. Offering "söröspohár" in alternatives is the useful answer; the comparison cannot see alternatives, so the case only asserts that resultParts keeps the input. The third user report (2026-09-22). The shipped session log reaches the right analysis and then applies the "régi telefon töltő" tiebreak - take the commoner reading - which is written for the case where neither branch matches the input and joining is unavoidable. The controls for the other direction are "unseen: Petőfi híd" and "unseen: külön szedve", where the input also matches a branch and is still wrong: one is a name the register settles, the other a branch the tool offers with no rule reference at all. Measured 2026-09-22, arms alternating over seven blocks: 4/7 on the shipped prompt against 6/7 with the tiebreak clause, on a case that had measured 0/5 unpaired an hour earlier - the swing between those two A numbers is what a five-repeat difference is worth here.'
 	}
 ];
 
