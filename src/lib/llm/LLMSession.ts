@@ -12,6 +12,7 @@ import type { LLMFunction } from './llmFunction.type';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import getProvider from './provider';
 import { toChatCompletionTool, toParameterSchema } from './toolSchema';
+import parseModelJson from './parseModelJson';
 
 const RESULT_TOOL_NAME = 'return_result';
 
@@ -216,7 +217,7 @@ class LLMSession<ResultType extends ZodType> {
 		try {
 			// Parse zod arguments (can throw LLM-friendly error messages).
 			// Parameterless calls may come back as an empty string instead of '{}'.
-			const args = llmFunction.parameters.parse(JSON.parse(toolCall.function.arguments || '{}'));
+			const args = parseModelJson(llmFunction.parameters, toolCall.function.arguments || '{}');
 
 			// Execute the tool (this should do so similarly)
 			const results = await llmFunction.callback(args);
@@ -247,7 +248,7 @@ class LLMSession<ResultType extends ZodType> {
 	/** A turn without tool calls is the final answer, constrained to the result schema. */
 	#acceptResult(content: string | null) {
 		try {
-			const candidate = this.#resultType.parse(JSON.parse(stripCodeFence(content ?? '')));
+			const candidate = parseModelJson(this.#resultType, stripCodeFence(content ?? ''));
 			const outcome = this.#tryAcceptResult(candidate);
 			if (outcome)
 				this.addMessage({

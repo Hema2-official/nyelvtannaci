@@ -61,7 +61,7 @@ export type SuccessfulResult = Result & { resultParts: [ResultPart, ...ResultPar
 export function normalizeResultError(error: string | null | undefined): string | null {
 	const trimmed = error?.trim();
 	if (!trimmed) return null;
-	return /^(null|undefined)$/i.test(trimmed) ? null : trimmed;
+	return /^(null|undefined|none)$/i.test(trimmed) ? null : trimmed;
 }
 
 export const developerPrompt = [

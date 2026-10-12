@@ -5,12 +5,16 @@ import { normalizeResultError } from '$lib/llm/promptConfig';
  * The case this exists for is real: MiMo-V2.6-Flash returned `"error": "null"` in all
  * thirteen sessions of a 2026-09-22 run, every correction in them correct, and the bench
  * suite reported thirteen failures reading "session reported an error: null".
+ *
+ * Mercury 2.5 writes Python's word for it: on 2026-09-23 every return_result it resent after a
+ * rejection carried `"error": "None"`, and three of seventeen sessions failed on that alone.
  */
 describe('normalizeResultError', () => {
 	it('turns the word a model writes instead of the value into a real null', () => {
 		expect(normalizeResultError('null')).toBe(null);
 		expect(normalizeResultError('undefined')).toBe(null);
 		expect(normalizeResultError('NULL')).toBe(null);
+		expect(normalizeResultError('None')).toBe(null);
 	});
 
 	it('treats an empty or blank field as no error', () => {
