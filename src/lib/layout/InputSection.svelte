@@ -20,7 +20,7 @@
 		input: () => viewState.currentInput
 	});
 
-	let allowSubmit = $derived(viewState.currentInput.length > 0 && !checkResource.loading);
+	let allowSubmit = $derived(viewState.currentInput.trim().length > 0 && !checkResource.loading);
 	let showCount = $derived(viewState.currentInput.length > maxInputLength - 200);
 
 	let warningOpen = $state(false);

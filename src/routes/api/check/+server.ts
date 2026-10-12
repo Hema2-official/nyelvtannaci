@@ -5,12 +5,50 @@ import { checkConcurrency, checkLimiter } from '$lib/server/rateLimit';
 import { record, type CheckEvent } from '$lib/server/analytics';
 import { maxInputLength } from '$lib/utils/limits';
 import type { RequestHandler } from '@sveltejs/kit';
+import { z } from 'zod';
+
+const checkRequest = z.object({ input: z.string() });
 
 function plainText(body: string, status: number, headers: Record<string, string> = {}) {
 	return new Response(body, {
 		status,
 		headers: { 'Content-Type': 'text/plain; charset=utf-8', ...headers }
 	});
+}
+
+// Hungarian error messages
+const badRequest = () => plainText('Érvénytelen kérelem.', 400);
+const noInput = () => plainText('Nincs ellenőrizendő szöveg.', 400);
+const tooLong = () =>
+	plainText(`Egyszerre legfeljebb ${maxInputLength} karakter ellenőrizhető.`, 413);
+const overloaded = () =>
+	plainText('A szolgáltatás pillanatnyilag leterhelt. Próbáld újra pár másodperc múlva.', 503, {
+		'Retry-After': '30'
+	});
+
+/** adapter-node errors the body stream at `BODY_SIZE_LIMIT`, and that is a 413, not bad JSON. */
+function isPayloadTooLarge(error: unknown) {
+	return (
+		typeof error === 'object' && error !== null && (error as { status?: unknown }).status === 413
+	);
+}
+
+async function readInput(request: Request): Promise<string | Response> {
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch (error: unknown) {
+		return isPayloadTooLarge(error) ? tooLong() : badRequest();
+	}
+
+	const parsed = checkRequest.safeParse(body);
+	if (!parsed.success) return noInput();
+
+	const input = parsed.data.input.trim();
+	if (!input) return noInput();
+	if (input.length > maxInputLength) return tooLong();
+
+	return input;
 }
 
 /** Never the message itself - an invariant failure quotes the model's take on the input back. */
@@ -38,24 +76,11 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		const limited = checkLimiter.reject(getClientAddress);
 		if (limited) return limited;
 
-		const { input } = (await request.json()) as { input?: string };
-		if (!input) throw new Error('No input specified');
-
-		if (input.length > maxInputLength) {
-			return plainText(
-				`A szöveg túl hosszú: egyszerre legfeljebb ${maxInputLength} karakter ellenőrizhető.`,
-				413
-			);
-		}
+		const input = await readInput(request);
+		if (input instanceof Response) return input;
 
 		const release = checkConcurrency.acquire();
-		if (!release) {
-			return plainText(
-				'A szolgáltatás pillanatnyilag leterhelt. Próbáld újra pár másodperc múlva.',
-				503,
-				{ 'Retry-After': '30' }
-			);
-		}
+		if (!release) return overloaded();
 
 		// We abort when the client disconnects instead of finishing the inaccessible session
 		const abort = new AbortController();
