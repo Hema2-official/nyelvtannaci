@@ -1,6 +1,7 @@
 import { MTA_BASE_URL } from '$env/static/private';
 import { parse } from 'node-html-parser';
 import scraperAxios, { getCached } from './scraperAxios';
+import cleanQuery from './queryInput';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
@@ -80,11 +81,7 @@ async function fetchCategories(id: string): Promise<string[]> {
 export async function scrapeNevkereso(
 	args: z.infer<typeof nevkeresoParams>
 ): Promise<NevkeresoResult> {
-	const input = args.input.trim();
-
-	if (!input) throw new Error('Input is required');
-	// as elsewhere, minus the apostrophe: it belongs to names like "L'Aquila"
-	if (/[<>"\\]/.test(input)) throw new Error('Invalid input');
+	const input = cleanQuery(args.input);
 
 	const html = await getCached(
 		scraperAxios.getUri({

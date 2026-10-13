@@ -207,14 +207,19 @@ class LLMSession<ResultType extends ZodType> {
 	}
 
 	async #runToolCall(toolCall: ChatCompletionMessageToolCall) {
-		// Some gateways omit the (currently only) type discriminator
-		if (toolCall.type && toolCall.type !== 'function') throw new Error('Unexpected tool call type');
-
-		const llmFunction = this.#functions.find((f) => f.name === toolCall.function.name);
-		if (!llmFunction) throw new Error('Misconfigured tool: ' + toolCall.function.name);
-
 		let output: string;
 		try {
+			// Some gateways omit the (currently only) type discriminator
+			if (toolCall.type && toolCall.type !== 'function')
+				throw new Error(`Unsupported tool call type "${toolCall.type}"`);
+
+			const llmFunction = this.#functions.find((f) => f.name === toolCall.function.name);
+			if (!llmFunction)
+				throw new Error(
+					`Unknown tool "${toolCall.function.name}". The available tools are: ` +
+						this.#functions.map((f) => f.name).join(', ')
+				);
+
 			// Parse zod arguments (can throw LLM-friendly error messages).
 			// Parameterless calls may come back as an empty string instead of '{}'.
 			const args = parseModelJson(llmFunction.parameters, toolCall.function.arguments || '{}');

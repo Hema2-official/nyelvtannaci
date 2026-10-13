@@ -2,6 +2,7 @@ import { parse } from 'node-html-parser';
 import { MTA_BASE_URL } from '$env/static/private';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import scraperAxios, { getCached } from './scraperAxios';
+import cleanQuery from './queryInput';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 import type { LLMFunction } from '$lib/llm/llmFunction.type';
@@ -37,17 +38,13 @@ function generateUrl(input: string) {
 export async function scrapeKulonVagyEgybe(
 	args: z.infer<typeof kulonVagyEgybeParams>
 ): Promise<KulonVagyEgybeResult[]> {
-	const { input } = args;
-
-	if (!input) throw new Error('Input is required');
-	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
+	const input = cleanQuery(args.input);
 
 	const results = await fetchSolutions(input);
 
-	const query = input.trim();
 	for (const result of results) {
 		if (result.possibleExplanations.some((e) => e.steps.length || e.help)) continue;
-		if (!result.solution.includes(' ') || result.solution === query) continue;
+		if (!result.solution.includes(' ') || result.solution === input) continue;
 
 		// Re-run query when there may be missing information because of the query's nature
 		const reasked = await fetchSolutions(result.solution).catch(() => []);
@@ -73,10 +70,13 @@ async function fetchSolutions(input: string): Promise<KulonVagyEgybeResult[]> {
 	if (errorNode) {
 		const message = errorNode.textContent?.trim();
 		if (!message) throw new Error('A karakterláncot sajnos nem tudtuk értelmezni.');
-		throw message
-			.substring(message.indexOf('\n') + 1)
-			.replace(/\s+/g, ' ')
-			.trim();
+		// the first line is the site's heading; the sentence under it is the reason
+		throw new Error(
+			message
+				.substring(message.indexOf('\n') + 1)
+				.replace(/\s+/g, ' ')
+				.trim()
+		);
 	}
 
 	if (doc.querySelector('.result.result-noresult'))

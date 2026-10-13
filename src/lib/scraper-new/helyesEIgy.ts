@@ -1,6 +1,7 @@
 import { parse, type HTMLElement } from 'node-html-parser';
 import { MTA_BASE_URL } from '$env/static/private';
 import scraperAxios, { getCached } from './scraperAxios';
+import cleanQuery from './queryInput';
 import optimizeForLLM from '$lib/utils/optimizeForLLM';
 import { z } from 'zod';
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
@@ -31,10 +32,7 @@ function generateUrl(input: string) {
 export async function scrapeHelyesEIgy(
 	args: z.infer<typeof helyesEIgyParams>
 ): Promise<HelyesEIgyResult[]> {
-	const { input } = args;
-
-	if (!input) throw new Error('Input is required');
-	if (!input || /[<>'"/\\]/.test(input)) throw new Error('Invalid input');
+	const input = cleanQuery(args.input);
 
 	const html = await getCached(generateUrl(input));
 	const doc = parse(html);

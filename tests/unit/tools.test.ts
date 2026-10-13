@@ -7,6 +7,7 @@ import { scrapeKulonVagyEgybe } from '$lib/scraper-new/kulonVagyEgybe';
 import { scrapeSzamok } from '$lib/scraper-new/szamok';
 import { scrapeNevkereso } from '$lib/scraper-new/nevkereso';
 import { mtaResponseCache } from '$lib/scraper-new/responseCache';
+import { MAX_QUERY_LENGTH } from '$lib/scraper-new/queryInput';
 import { availableFunctions } from '$lib/llm/promptConfig';
 
 /** Make any request fail, so a test can prove no request was attempted. */
@@ -16,34 +17,42 @@ function refuseRequests() {
 		.mockRejectedValue(new Error('the scraper reached the network with a rejected input'));
 }
 
-/**
- * Every scraper puts the model's argument straight into a URL, so the guard has to hold
- * before any request goes out. The mock is here to fail loudly if one ever slips through.
- */
+/** Verifies invalid queries are rejected before reaching the network. */
 describe.each([
 	['kulon_vagy_egybe', scrapeKulonVagyEgybe],
 	['helyes-e_igy', scrapeHelyesEIgy],
-	['elvalasztas', scrapeElvalasztas]
+	['elvalasztas', scrapeElvalasztas],
+	['nevkereso', scrapeNevkereso]
 ])('%s input validation', (_name, scrape) => {
 	let request: ReturnType<typeof refuseRequests>;
 
 	beforeEach(() => {
 		request = refuseRequests();
+		mtaResponseCache.clear();
 	});
 
 	afterEach(() => vi.restoreAllMocks());
 
 	it.each([
 		['empty', ''],
-		['markup', '<script>'],
-		['a closing tag', 'szó</b>'],
-		['a quote', "szó'"],
-		['a double quote', 'szó"'],
-		['a slash', 'szó/másik'],
-		['a backslash', 'szó\\másik']
+		['whitespace', ' \t '],
+		['a line break', 'szó\nmásik'],
+		['a control character', 'szó\u0000'],
+		['an overlong query', 'a'.repeat(MAX_QUERY_LENGTH + 1)]
 	])('rejects %s without asking the site', async (_label, input) => {
 		await expect(scrape({ input })).rejects.toThrow();
 		expect(request).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['an apostrophe', "L'Aquila"],
+		['a slash', 'és/vagy'],
+		['quotation marks', '„idézet”'],
+		['a query at the limit', 'a'.repeat(MAX_QUERY_LENGTH)]
+	])('lets %s through to the site', async (_label, input) => {
+		// the mock rejects everything, so reaching it is the assertion
+		await expect(scrape({ input })).rejects.toThrow(/reached the network/);
+		expect(request).toHaveBeenCalledOnce();
 	});
 });
 
@@ -81,36 +90,6 @@ describe.each([
 	it.each(accepted)('lets %j through to the site', async (input) => {
 		// the mock rejects everything, so reaching it is the assertion
 		await expect(scrape({ input })).rejects.toThrow(/reached the network/);
-		expect(request).toHaveBeenCalledOnce();
-	});
-});
-
-/**
- * nevkereso keeps the apostrophe the other guards reject: it belongs to names like
- * "L'Aquila", and the value of a name lookup is exactly that it takes the name as written.
- */
-describe('nevkereso input validation', () => {
-	let request: ReturnType<typeof refuseRequests>;
-
-	beforeEach(() => {
-		request = refuseRequests();
-		mtaResponseCache.clear();
-	});
-
-	afterEach(() => vi.restoreAllMocks());
-
-	it.each([
-		['empty', ''],
-		['markup', '<script>'],
-		['a double quote', 'Petőfi"'],
-		['a backslash', 'Petőfi\\híd']
-	])('rejects %s without asking the site', async (_label, input) => {
-		await expect(scrapeNevkereso({ input })).rejects.toThrow();
-		expect(request).not.toHaveBeenCalled();
-	});
-
-	it('lets a name with an apostrophe through', async () => {
-		await expect(scrapeNevkereso({ input: "L'Aquila" })).rejects.toThrow(/reached the network/);
 		expect(request).toHaveBeenCalledOnce();
 	});
 });

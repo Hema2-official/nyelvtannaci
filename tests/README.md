@@ -13,9 +13,10 @@ for `vitest run tests/e2e`.
 
 ## tests/unit — what holds without a network
 
-Input validation for the scrapers (every one of them puts the model's argument straight into a
-URL, so the guard has to hold before any request goes out — `nevkereso` is the one that keeps
-the apostrophe, because names like `L'Aquila` need it), the marking of the register entries
+Input validation for the scrapers (the model's argument becomes a URL query parameter, which
+axios encodes, so the guard in front of the text tools is not about characters: it turns away an
+empty query, a control character and a length no phrase reaches, before any request goes out —
+`datumok` and `szamok` keep allowlists of their own), the marking of the register entries
 that spell a query back, the tool definitions the model selects on, and the JSON-schema
 normalisation in `toolSchema.ts` — strict mode closes every
 object and lists every key, non-strict drops `additionalProperties` entirely. That last one is

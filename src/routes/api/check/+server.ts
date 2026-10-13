@@ -5,6 +5,7 @@ import { checkConcurrency, checkLimiter } from '$lib/server/rateLimit';
 import { record, type CheckEvent } from '$lib/server/analytics';
 import { maxInputLength } from '$lib/utils/limits';
 import type { RequestHandler } from '@sveltejs/kit';
+import { APIError } from 'openai';
 import { z } from 'zod';
 
 const checkRequest = z.object({ input: z.string() });
@@ -51,14 +52,24 @@ async function readInput(request: Request): Promise<string | Response> {
 	return input;
 }
 
-/** Never the message itself - an invariant failure quotes the model's take on the input back. */
-function failureReason(error: unknown, aborted: boolean): CheckEvent['reason'] {
+type FailureReason = NonNullable<CheckEvent['reason']>;
+
+/** Categorizes failures into safe reasons to avoid exposing raw error details to the user. */
+function failureReason(error: unknown, aborted: boolean): FailureReason {
 	if (aborted) return 'aborted';
 	const message = errorMessage(error, '');
 	if (message.includes('turns')) return 'turns';
-	if (message.includes('provider')) return 'provider';
+	if (error instanceof APIError || message.includes('provider')) return 'provider';
 	return 'other';
 }
+
+/** What the reader sees. The detail went to the server log, which is where it is of any use. */
+const failureMessages: Record<FailureReason, string> = {
+	aborted: 'Az ellenőrzés megszakadt.',
+	turns: 'Az ellenőrzés nem fejeződött be a megengedett kereteken belül. Próbáld újra.',
+	provider: 'A nyelvi modell szolgáltatója nem válaszolt. Próbáld újra később.',
+	other: 'Az ellenőrzés hiba miatt megszakadt. Próbáld újra.'
+};
 
 function countParts(result: Result) {
 	const parts: CheckEvent['parts'] = {};
@@ -117,10 +128,12 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						parts: countParts(result)
 					});
 				} catch (error: unknown) {
+					const reason = failureReason(error, abort.signal.aborted);
+
 					// if aborted, the reader is gone anyway
-					if (!abort.signal.aborted) {
+					if (reason !== 'aborted') {
 						console.error(error);
-						sendEvent('error', errorMessage(error, 'Session error'));
+						sendEvent('error', failureMessages[reason]);
 					}
 
 					recordCheck({
@@ -128,7 +141,7 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 						durationMs: Date.now() - startTime,
 						inputLength: input.length,
 						ok: false,
-						reason: failureReason(error, abort.signal.aborted)
+						reason
 					});
 				} finally {
 					release();
@@ -153,6 +166,6 @@ export const POST: RequestHandler = async ({ request, getClientAddress }) => {
 		});
 	} catch (error: unknown) {
 		console.error(error);
-		return new Response(errorMessage(error, 'Proxy error'), { status: 500 });
+		return plainText('Váratlan hiba történt. Próbáld újra.', 500);
 	}
 };

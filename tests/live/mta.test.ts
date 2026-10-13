@@ -70,10 +70,7 @@ describe.sequential('kulon_vagy_egybe', () => {
 	});
 
 	it('surfaces the message of an input the site refuses', async () => {
-		// note: this path rejects with a bare string rather than an Error
-		const error = await scrapeKulonVagyEgybe({ input: 'nyelvtan' }).catch((e: unknown) => e);
-
-		expect(String(error)).toContain('legalább 2');
+		await expect(scrapeKulonVagyEgybe({ input: 'nyelvtan' })).rejects.toThrow('legalább 2');
 	});
 });
 
