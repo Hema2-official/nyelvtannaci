@@ -46,7 +46,9 @@
 					}
 
 					const intermediateSummaries = $state.snapshot(viewState.intermediateSummaries);
-					historyDb.addEntry(input, result, intermediateSummaries);
+					historyDb
+						.addEntry(input, result, intermediateSummaries)
+						.catch((error: unknown) => console.warn('History entry not saved:', error));
 					viewState.currentResult = result;
 					return result;
 				} else if (event.type === 'error') {

@@ -17,7 +17,9 @@
 
 	function handleOpen(id: number) {
 		track({ kind: 'history_open' });
-		viewState.openHistory(id);
+		viewState
+			.openHistory(id)
+			.catch((error: unknown) => console.warn('History entry not opened:', error));
 		if (sidebar.isMobile) sidebar.setOpenMobile(false);
 	}
 
@@ -29,7 +31,9 @@
 	function handleDelete(id: number, e: MouseEvent) {
 		e.stopPropagation();
 		track({ kind: 'history_delete' });
-		historyDb.deleteEntry(id);
+		historyDb
+			.deleteEntry(id)
+			.catch((error: unknown) => console.warn('History entry not deleted:', error));
 	}
 </script>
 
