@@ -23,4 +23,4 @@
 </Sidebar.Provider>
 
 <Toaster />
-<ModeWatcher />
+<ModeWatcher disableHeadScriptInjection />

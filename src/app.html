@@ -4,6 +4,29 @@
 		<meta charset="utf-8" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<script nonce="%sveltekit.nonce%">
+			// Manually inlining mode-watcher's theme-init script here allows
+			// attaching the CSP nonce so it isn't blocked.
+			(function () {
+				try {
+					var root = document.documentElement;
+					var mode = localStorage.getItem('mode-watcher-mode') ?? 'system';
+					var theme = localStorage.getItem('mode-watcher-theme') ?? '';
+					var light =
+						mode === 'light' ||
+						(mode === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+					root.classList.toggle('dark', !light);
+					root.style.colorScheme = light ? 'light' : 'dark';
+					if (theme) {
+						root.setAttribute('data-theme', theme);
+						localStorage.setItem('mode-watcher-theme', theme);
+					}
+					localStorage.setItem('mode-watcher-mode', mode);
+				} catch (_) {
+					// no storage: mode-watcher sets the theme after hydration instead
+				}
+			})();
+		</script>
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
