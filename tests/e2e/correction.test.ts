@@ -8,6 +8,7 @@ import { toChatCompletionTool, toParameterSchema } from '$lib/llm/toolSchema';
 import { errorMessage } from '$lib/utils/errorMessage';
 import { comparableText, conformanceProblem, correctedText, correctionCases } from './cases';
 import type { Result } from '$lib/llm/promptConfig';
+import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
 
 /**
  * The whole flow: prompt -> model -> MTA tools -> result. Every case is a real session,
@@ -39,6 +40,20 @@ if (selectedCases.length === 0) throw new Error(`BENCH_CASES matched no case: ${
 /** A session is many model turns; it needs far longer than the default. */
 const sessionTimeout = 600_000;
 
+/**
+ * A session still running when vitest gave up on it went on beside the next case, then landed
+ * late - a pass recorded for a test vitest had already failed - or never, leaving a report one
+ * run short that said `errored: 0`. So it is stopped a little earlier, and its run recorded as
+ * errored.
+ */
+const sessionDeadline = sessionTimeout - 10_000;
+
+/**
+ * A stopped session still writes its session log on the way out, and after the last case the
+ * process does not wait for it. This is how long it gets.
+ */
+const windDown = 5_000;
+
 type Run = {
 	case: string;
 	inPrompt: boolean;
@@ -49,6 +64,11 @@ type Run = {
 	toolCalls: number;
 	/** What was asked of which tool, in order, as "tool: query". */
 	queries: string[];
+	/**
+	 * The calls `queries` leaves out: the tool answered with an error, which the model was
+	 * shown all the same. As "tool: query -> error".
+	 */
+	failedToolCalls?: string[];
 	expected: string;
 	got: string;
 	problem?: string;
@@ -79,6 +99,47 @@ function toolOf(shareLink: string | undefined) {
 	return 'unknown';
 }
 
+/**
+ * helyes-e_igy reports no query, and its first expression is only the first word of what it
+ * was sent; the share link carries all of it.
+ */
+function queryOf(summary: IntermediateSummary | undefined) {
+	if (summary?.query) return summary.query;
+	try {
+		return new URL(summary?.shareLink ?? '').searchParams.get('q') ?? summary?.expression;
+	} catch {
+		return summary?.expression;
+	}
+}
+
+/** The `input` every MTA tool takes, or the arguments as sent when there is none. */
+function inputOf(rawArguments: string) {
+	try {
+		const { input } = JSON.parse(rawArguments) as { input?: unknown };
+		if (typeof input === 'string') return input;
+	} catch {
+		// not even JSON, which is worth seeing as it came
+	}
+	return rawArguments.length > 200 ? `${rawArguments.slice(0, 200)}...` : rawArguments;
+}
+
+/** Rejects with the signal's reason once it aborts. */
+function aborted(signal: AbortSignal) {
+	return new Promise<never>((_, reject) =>
+		signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+	);
+}
+
+/** Waits for a promise to settle either way, but no longer than `ms`. */
+async function settled(promise: Promise<unknown>, ms: number) {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	await Promise.race([
+		promise.catch(() => {}),
+		new Promise((resolve) => (timer = setTimeout(resolve, ms)))
+	]);
+	clearTimeout(timer);
+}
+
 const plan = selectedCases.flatMap((testCase) =>
 	Array.from({ length: repeats }, (_, index) => ({ testCase, run: index + 1 }))
 );
@@ -88,6 +149,7 @@ describe.sequential('correction flow', () => {
 		'$testCase.name (run $run)',
 		async ({ testCase, run }) => {
 			const queries: string[] = [];
+			const failedToolCalls: string[] = [];
 			let toolCalls = 0;
 			const started = performance.now();
 
@@ -96,12 +158,29 @@ describe.sequential('correction flow', () => {
 			let errored: true | undefined;
 			let parts: Result['resultParts'] | undefined;
 
-			try {
-				const result = await runSession(testCase.input, async (summaries) => {
+			const abort = new AbortController();
+			const deadline = setTimeout(
+				() => abort.abort(new Error(`stopped after ${sessionDeadline / 1000} s without an answer`)),
+				sessionDeadline
+			);
+			const session = runSession(
+				testCase.input,
+				async (summaries) => {
 					toolCalls++;
 					const [summary] = summaries;
-					queries.push(`${toolOf(summary?.shareLink)}: ${summary?.query ?? summary?.expression}`);
-				});
+					queries.push(`${toolOf(summary?.shareLink)}: ${queryOf(summary)}`);
+				},
+				undefined,
+				abort.signal,
+				(call) => {
+					if (call.error !== undefined)
+						failedToolCalls.push(`${call.tool}: ${inputOf(call.arguments)} -> ${call.error}`);
+				}
+			);
+
+			try {
+				// the session itself stops at its next chance, which can be a tool call away
+				const result = await Promise.race([session, aborted(abort.signal)]);
 
 				got = correctedText(result);
 				parts = result.resultParts;
@@ -111,9 +190,13 @@ describe.sequential('correction flow', () => {
 			} catch (error: unknown) {
 				problem = errorMessage(error, 'session threw');
 				errored = true;
+			} finally {
+				clearTimeout(deadline);
 			}
 
 			const ms = Math.round(performance.now() - started);
+			if (abort.signal.aborted) await settled(session, windDown);
+
 			runs.push({
 				case: testCase.name,
 				inPrompt: testCase.inPrompt,
@@ -121,7 +204,9 @@ describe.sequential('correction flow', () => {
 				passed: problem === undefined,
 				ms,
 				toolCalls,
-				queries,
+				// copies: a stopped session that outlives its wind-down could still add to these
+				queries: [...queries],
+				...(failedToolCalls.length ? { failedToolCalls: [...failedToolCalls] } : {}),
 				expected: testCase.expected,
 				got,
 				problem,
@@ -157,6 +242,8 @@ describe.sequential('correction flow', () => {
 				structuredOutputs: provider.structuredOutputs,
 				strictTools: provider.strictTools,
 				extraBody: provider.extraBody ?? null,
+				completionCap: provider.completionCap ?? null,
+				timeoutMs: provider.timeoutMs ?? null,
 				maxTurns: provider.maxTurns
 			},
 			// so a benchmark can be tied to what the model was actually given

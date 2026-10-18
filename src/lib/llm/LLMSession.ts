@@ -1,7 +1,10 @@
 import { errorMessage } from '$lib/utils/errorMessage';
 import { z, type ZodType } from 'zod';
 import { randomUUID, type UUID } from 'node:crypto';
+import { APIConnectionTimeoutError } from 'openai';
 import type {
+	ChatCompletion,
+	ChatCompletionMessage,
 	ChatCompletionMessageParam,
 	ChatCompletionMessageToolCall,
 	ChatCompletionTool,
@@ -15,6 +18,34 @@ import { toChatCompletionTool, toParameterSchema } from './toolSchema';
 import parseModelJson from './parseModelJson';
 
 const RESULT_TOOL_NAME = 'return_result';
+
+/**
+ * An empty turn is asked again from the same history, and a history that keeps producing
+ * nothing would spend every turn the session has, a capped loop at a time. This many in a
+ * row ends the session.
+ */
+const EMPTY_TURNS_IN_A_ROW = 3;
+
+/** One model response, as the session log keeps it. */
+export type TurnRecord = {
+	/** As the gateway reports it: `tool_calls`, `stop`, `length` (the completion cap), ... */
+	finishReason: string | null;
+	ms: number;
+	completionTokens: number;
+	reasoningTokens?: number;
+	servedBy?: string;
+	/** Left out of the history: it called no tool and said nothing, so only its reasoning is here. */
+	dropped?: true;
+	reasoning?: string;
+};
+
+/** What was asked of a tool and whether it answered, for whoever is keeping score. */
+export type ToolCallRecord = {
+	tool: string;
+	/** As the model sent them, unparsed. */
+	arguments: string;
+	error?: string;
+};
 
 /**
  * The model reasons in its own reasoning tokens, so assistant messages are only ever
@@ -39,6 +70,19 @@ function stripCodeFence(content: string) {
 	return fenced ? fenced[1] : content;
 }
 
+/** Name and arguments of a tool call, whichever kind the gateway says it is. */
+function describeCall(toolCall: ChatCompletionMessageToolCall) {
+	return 'function' in toolCall
+		? { tool: toolCall.function.name, arguments: toolCall.function.arguments }
+		: { tool: toolCall.custom.name, arguments: toolCall.custom.input };
+}
+
+/** The reasoning a response carried, once #complete has moved it to `reasoning`. */
+function reasoningOf(message: ChatCompletionMessage) {
+	const reasoning = (message as unknown as Record<string, unknown>).reasoning;
+	return typeof reasoning === 'string' && reasoning ? reasoning : undefined;
+}
+
 class LLMSession<ResultType extends ZodType> {
 	readonly id: UUID;
 
@@ -51,6 +95,20 @@ class LLMSession<ResultType extends ZodType> {
 
 	#resultType: ResultType;
 	#result?: z.infer<ResultType>;
+
+	#usage = {
+		promptTokens: 0,
+		completionTokens: 0,
+		totalTokens: 0,
+		reasoningTokens: 0
+	};
+
+	#servedBy: string[] = [];
+
+	/** Every model response, the ones left out of the history included. */
+	#turns: TurnRecord[] = [];
+
+	#toolCallObserver: ((call: ToolCallRecord) => void) | undefined;
 
 	/** Mechanical checks on a well-formed result, applied before it is accepted. */
 	#resultValidator: ((result: z.infer<ResultType>) => string | undefined) | undefined;
@@ -89,6 +147,23 @@ class LLMSession<ResultType extends ZodType> {
 		this.#messages.push(message);
 	}
 
+	get messages(): readonly ChatCompletionMessageParam[] {
+		return this.#messages;
+	}
+
+	get usage() {
+		return { ...this.#usage };
+	}
+
+	/** The distinct upstreams that answered this session, in the order they first did. */
+	get servedBy(): string[] {
+		return [...new Set(this.#servedBy)];
+	}
+
+	get turns(): readonly TurnRecord[] {
+		return this.#turns;
+	}
+
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	registerFunction(llmFunction: LLMFunction<any, any>) {
 		this.#functions.push(llmFunction);
@@ -96,6 +171,11 @@ class LLMSession<ResultType extends ZodType> {
 
 	setIntermediateCallback(callback: (summary: IntermediateSummary[]) => Promise<void>) {
 		this.#intermediateCallback = callback;
+	}
+
+	/** Hears about every tool call, the failed ones too, which the summaries leave out. */
+	setToolCallObserver(observer: (call: ToolCallRecord) => void) {
+		this.#toolCallObserver = observer;
 	}
 
 	setResultValidator(validator: (result: z.infer<ResultType>) => string | undefined) {
@@ -142,6 +222,7 @@ class LLMSession<ResultType extends ZodType> {
 		const responseFormat = structuredOutputs ? this.#responseFormat() : undefined;
 
 		// One turn is one model response: either a batch of tool calls or the final answer
+		let emptyTurns = 0;
 		for (let turn = 0; turn < maxTurns && this.#result === undefined; turn++) {
 			this.#signal?.throwIfAborted();
 			// the review turn is for reading, not for re-querying: only the result tool is offered
@@ -150,7 +231,17 @@ class LLMSession<ResultType extends ZodType> {
 						(tool) => tool.type === 'function' && tool.function.name === RESULT_TOOL_NAME
 					)
 				: tools;
-			const message = await this.#complete(turnTools, responseFormat);
+			const { message, record } = await this.#complete(turnTools, responseFormat);
+
+			if (!message.tool_calls?.length && !message.content?.trim()) {
+				record.dropped = true;
+				record.reasoning = reasoningOf(message);
+				if (++emptyTurns === EMPTY_TURNS_IN_A_ROW) break;
+				this.#askToContinue(structuredOutputs);
+				continue;
+			}
+
+			emptyTurns = 0;
 			this.addMessage(message);
 
 			if (message.tool_calls?.length) {
@@ -159,10 +250,7 @@ class LLMSession<ResultType extends ZodType> {
 				this.#acceptResult(message.content);
 			} else {
 				// The model wrote prose instead of handing back a result
-				this.addMessage({
-					role: 'user',
-					content: `Continue with the tools, or call ${RESULT_TOOL_NAME} if the check is complete.`
-				});
+				this.#askToContinue(structuredOutputs);
 			}
 		}
 
@@ -170,44 +258,113 @@ class LLMSession<ResultType extends ZodType> {
 		if (this.#result === undefined) this.#result = this.#pendingResult;
 
 		if (this.#result === undefined)
-			throw new Error(`No result returned from the model within ${maxTurns} turns`);
+			throw new Error(
+				emptyTurns === EMPTY_TURNS_IN_A_ROW
+					? `No result returned from the model: ${emptyTurns} turns in a row came back empty`
+					: `No result returned from the model within ${maxTurns} turns`
+			);
 
 		return this.#result;
+	}
+
+	/** Asks for the next step after a turn that neither called a tool nor answered. */
+	#askToContinue(structuredOutputs: boolean) {
+		const content = structuredOutputs
+			? 'Continue with the tools, or answer with the final JSON result if the check is complete.'
+			: `Continue with the tools, or call ${RESULT_TOOL_NAME} if the check is complete.`;
+
+		// after a dropped turn the history can already end with this very question
+		const last = this.#messages.at(-1);
+		if (last?.role === 'user' && last.content === content) return;
+
+		this.addMessage({ role: 'user', content });
 	}
 
 	async #complete(
 		tools: ChatCompletionTool[],
 		responseFormat: ResponseFormatJSONSchema | undefined
 	) {
-		const { client, model, reasoningEffort, extraBody, temperature } = getProvider();
+		const { client, model, reasoningEffort, extraBody, temperature, completionCap, timeoutMs } =
+			getProvider();
 
-		const completion = await client.chat.completions.create(
-			{
-				messages: this.#messages,
-				model: model,
-				tools: tools,
-				stream: false,
-				...(typeof temperature === 'number' ? { temperature } : {}),
-				...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
-				...(responseFormat ? { response_format: responseFormat } : {}),
-				...extraBody
-			},
-			// this signal provides stream cancellation
-			{ signal: this.#signal }
-		);
+		const deadline = timeoutMs ? AbortSignal.timeout(timeoutMs) : undefined;
+		const signals = [this.#signal, deadline].filter((signal) => signal !== undefined);
+		const started = Date.now();
+
+		let completion: ChatCompletion;
+		try {
+			completion = await client.chat.completions.create(
+				{
+					messages: this.#messages,
+					model: model,
+					tools: tools,
+					stream: false,
+					...(typeof temperature === 'number' ? { temperature } : {}),
+					...(reasoningEffort ? { reasoning_effort: reasoningEffort as ReasoningEffort } : {}),
+					...(responseFormat ? { response_format: responseFormat } : {}),
+					...completionCap,
+					...extraBody
+				},
+				// the caller going away ends the request just as the deadline does
+				{ signal: signals.length ? AbortSignal.any(signals) : undefined }
+			);
+		} catch (error: unknown) {
+			if (timeoutMs && deadline?.aborted && !this.#signal?.aborted)
+				throw new APIConnectionTimeoutError({
+					message: `The model did not answer within ${timeoutMs / 1000} s`
+				});
+			throw error;
+		}
 
 		// OpenAI-compatible gateways sometimes report failures in the body of a 200
 		const error = (completion as { error?: { message?: string } }).error;
 		if (error) throw new Error(error.message ?? 'The provider returned an error');
 
-		const message = completion.choices?.[0]?.message;
+		const servedBy = (completion as { provider?: unknown }).provider;
+		if (typeof servedBy === 'string' && servedBy) this.#servedBy.push(servedBy);
+
+		const reasoningTokens = completion.usage?.completion_tokens_details?.reasoning_tokens;
+		if (completion.usage) {
+			this.#usage.promptTokens += completion.usage.prompt_tokens ?? 0;
+			this.#usage.completionTokens += completion.usage.completion_tokens ?? 0;
+			this.#usage.totalTokens += completion.usage.total_tokens ?? 0;
+			if (typeof reasoningTokens === 'number') {
+				this.#usage.reasoningTokens += reasoningTokens;
+			}
+		}
+
+		const choice = completion.choices?.[0];
+		const message = choice?.message;
 		if (!message) throw new Error('The provider returned no completion choices');
 
-		return message;
+		const record: TurnRecord = {
+			finishReason: choice.finish_reason ?? null,
+			ms: Date.now() - started,
+			completionTokens: completion.usage?.completion_tokens ?? 0,
+			...(typeof reasoningTokens === 'number' ? { reasoningTokens } : {}),
+			...(typeof servedBy === 'string' && servedBy ? { servedBy } : {})
+		};
+		this.#turns.push(record);
+
+		// gateways name the reasoning differently, and some hang it on the choice instead
+		const fields = message as unknown as Record<string, unknown>;
+		const choiceFields = choice as unknown as Record<string, unknown>;
+		const rawReasoning =
+			fields.reasoning ??
+			fields.reasoning_content ??
+			choiceFields.reasoning ??
+			choiceFields.reasoning_content;
+
+		if (rawReasoning !== undefined && fields.reasoning === undefined) {
+			fields.reasoning = rawReasoning;
+		}
+
+		return { message, record };
 	}
 
 	async #runToolCall(toolCall: ChatCompletionMessageToolCall) {
 		let output: string;
+		let failure: string | undefined;
 		try {
 			// Some gateways omit the (currently only) type discriminator
 			if (toolCall.type && toolCall.type !== 'function')
@@ -239,7 +396,18 @@ class LLMSession<ResultType extends ZodType> {
 			}
 		} catch (error: unknown) {
 			console.error(error);
-			output = JSON.stringify({ error: errorMessage(error) });
+			failure = errorMessage(error);
+			output = JSON.stringify({ error: failure });
+		}
+
+		try {
+			this.#toolCallObserver?.({
+				...describeCall(toolCall),
+				...(failure !== undefined ? { error: failure } : {})
+			});
+		} catch (error: unknown) {
+			// the score is kept for us, and keeping it must not cost the session
+			console.error(error);
 		}
 
 		// Tell the LLM about the result

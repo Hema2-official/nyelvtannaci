@@ -14,6 +14,8 @@ type ProviderPreset = {
 	supportsStrictTools: boolean;
 	/** Whether `response_format: json_schema` constrains the final answer to the result schema. */
 	supportsStructuredOutputs: boolean;
+	/** The request field that caps one response. */
+	completionCapField: 'max_tokens' | 'max_completion_tokens';
 };
 
 const presets: Record<ProviderId, ProviderPreset> = {
@@ -22,7 +24,8 @@ const presets: Record<ProviderId, ProviderPreset> = {
 		apiKeyVars: ['LLM_API_KEY', 'OPENAI_API_KEY'],
 		supportsDeveloperRole: true,
 		supportsStrictTools: true,
-		supportsStructuredOutputs: true
+		supportsStructuredOutputs: true,
+		completionCapField: 'max_completion_tokens'
 	},
 	// Zen (pay per token) and Go (subscription) are separate OpenCode services with
 	// separate endpoints and model catalogues, but they share one API key.
@@ -31,27 +34,31 @@ const presets: Record<ProviderId, ProviderPreset> = {
 		apiKeyVars: ['LLM_API_KEY', 'OPENCODE_API_KEY', 'OPENCODE_ZEN_API_KEY'],
 		supportsDeveloperRole: false,
 		supportsStrictTools: false,
-		supportsStructuredOutputs: false
+		supportsStructuredOutputs: false,
+		completionCapField: 'max_tokens'
 	},
 	'opencode-go': {
 		baseURL: 'https://opencode.ai/zen/go/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENCODE_API_KEY', 'OPENCODE_GO_API_KEY'],
 		supportsDeveloperRole: false,
 		supportsStrictTools: false,
-		supportsStructuredOutputs: false
+		supportsStructuredOutputs: false,
+		completionCapField: 'max_tokens'
 	},
 	openrouter: {
 		baseURL: 'https://openrouter.ai/api/v1',
 		apiKeyVars: ['LLM_API_KEY', 'OPENROUTER_API_KEY'],
 		supportsDeveloperRole: false,
 		supportsStrictTools: false,
-		supportsStructuredOutputs: false
+		supportsStructuredOutputs: false,
+		completionCapField: 'max_tokens'
 	},
 	custom: {
 		apiKeyVars: ['LLM_API_KEY', 'OPENAI_API_KEY'],
 		supportsDeveloperRole: false,
 		supportsStrictTools: false,
-		supportsStructuredOutputs: false
+		supportsStructuredOutputs: false,
+		completionCapField: 'max_tokens'
 	}
 };
 
@@ -82,6 +89,10 @@ export type LLMProvider = {
 	temperature?: number;
 	/** Provider-specific fields merged into every chat-completion request body. */
 	extraBody?: Record<string, unknown>;
+	/** Caps one response, reasoning included, in whichever field the gateway reads. */
+	completionCap?: { max_tokens: number } | { max_completion_tokens: number };
+	/** How long one model response may take, retries included. Undefined sets no deadline. */
+	timeoutMs?: number;
 	/** How many model responses a single session may consume. */
 	maxTurns: number;
 };
@@ -115,6 +126,11 @@ function readPositiveInt(name: string, fallback: number) {
 	if (!Number.isFinite(parsed) || parsed <= 0)
 		throw new Error(`${name} must be a positive integer, got "${value}"`);
 	return parsed;
+}
+
+/** A positive integer, or `off` for no limit at all. */
+function readLimit(name: string, fallback: number) {
+	return read(name)?.toLowerCase() === 'off' ? undefined : readPositiveInt(name, fallback);
 }
 
 function resolveProviderId(): ProviderId {
@@ -159,8 +175,17 @@ function resolveHeaders(id: ProviderId) {
 function getExtraBody(id: ProviderId): Record<string, unknown> | undefined {
 	if (id === 'openrouter') {
 		const prioritize = read('OPENROUTER_PRIORITIZE');
-		if (!prioritize) return undefined;
-		return { provider: { sort: prioritize } };
+		const only = read('OPENROUTER_ONLY')
+			?.split(',')
+			.map((name) => name.trim())
+			.filter(Boolean);
+		if (!prioritize && !only?.length) return undefined;
+		return {
+			provider: {
+				...(prioritize ? { sort: prioritize } : {}),
+				...(only?.length ? { only } : {})
+			}
+		};
 	}
 
 	return undefined;
@@ -181,13 +206,24 @@ function createProvider(): LLMProvider {
 	const structuredOutputs =
 		readBoolean('LLM_STRUCTURED_OUTPUTS') ?? preset.supportsStructuredOutputs;
 
+	const maxCompletionTokens = readLimit('LLM_MAX_COMPLETION_TOKENS', 48_000);
+	const completionCap =
+		maxCompletionTokens === undefined
+			? undefined
+			: preset.completionCapField === 'max_tokens'
+				? { max_tokens: maxCompletionTokens }
+				: { max_completion_tokens: maxCompletionTokens };
+
+	const timeoutMs = readLimit('LLM_TIMEOUT_MS', 300_000);
+
 	return {
 		id,
 		client: new OpenAI({
 			apiKey: resolveApiKey(id, preset),
 			baseURL,
 			defaultHeaders: resolveHeaders(id),
-			maxRetries: readPositiveInt('LLM_MAX_RETRIES', 5)
+			maxRetries: readPositiveInt('LLM_MAX_RETRIES', 5),
+			...(timeoutMs ? { timeout: timeoutMs } : {})
 		}),
 		model,
 		systemRole: supportsDeveloperRole ? 'developer' : 'system',
@@ -196,6 +232,8 @@ function createProvider(): LLMProvider {
 		reasoningEffort: read('LLM_REASONING_EFFORT'),
 		temperature: readNumber('LLM_TEMPERATURE', 0.6),
 		extraBody: getExtraBody(id),
+		completionCap,
+		timeoutMs,
 		maxTurns: readPositiveInt('SESSION_MAX_TURNS', 25)
 	};
 }

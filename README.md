@@ -63,4 +63,21 @@ pick a model that is available on `/v1/chat/completions`. `LLM_MODEL` takes the 
 model id (`kimi-k3`) — the `opencode/` and `opencode-go/` prefixes seen in other
 tools are their own router namespaces, not part of the API model id.
 
+### Bounding a turn
+
+A model can loop in its reasoning: DeepSeek V4.1 Flash has written "Hmm. / OK." up to its
+host's 131k-token limit, turn after turn. Two settings bound a single model response, and
+`off` disables either:
+
+- `LLM_MAX_COMPLETION_TOKENS` (default `48000`) caps one response, reasoning included. It is
+  sent as `max_completion_tokens` to OpenAI, which rejects `max_tokens` on reasoning models,
+  and as `max_tokens` everywhere else. On OpenRouter it also sets the thinking budget of a
+  model that takes one: Anthropic's is the cap times the effort ratio (0.2 at `low`).
+- `LLM_TIMEOUT_MS` (default `300000`) is how long one response may take, retries included.
+  The OpenAI client's own timeout stops at the response headers, which OpenRouter sends within
+  seconds, so this is a deadline on the whole request instead.
+
+A response with neither a tool call nor any text is left out of the history, so the model is
+not shown its own loop to continue; three of those in a row end the session.
+
 ## More docs coming soon™️

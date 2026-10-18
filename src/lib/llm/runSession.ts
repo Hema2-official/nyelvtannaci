@@ -1,5 +1,5 @@
 import type { IntermediateSummary } from '$lib/llm/toolSummary.type';
-import LLMSession from './LLMSession';
+import LLMSession, { type ToolCallRecord } from './LLMSession';
 import {
 	availableFunctions,
 	developerPrompt,
@@ -14,6 +14,7 @@ import mergeChunkResults, { originalPart } from '../logic/mergeChunkResults';
 
 type InitCallback = () => Promise<void> | void;
 type IntermediateCallback = (summary: IntermediateSummary[]) => Promise<void>;
+type ToolCallObserver = (call: ToolCallRecord) => void;
 
 const defaultCallback: IntermediateCallback & InitCallback = async (data?) =>
 	console.log(data ?? 'init');
@@ -23,7 +24,8 @@ export async function runSingleSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
 	initCallback: InitCallback = defaultCallback,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	onToolCall?: ToolCallObserver
 ): Promise<Result> {
 	const session = new LLMSession(developerPrompt, resultType.required(), signal);
 
@@ -35,6 +37,7 @@ export async function runSingleSession(
 
 	// Subscribe to intermediate summaries
 	session.setIntermediateCallback(intermediateCallback);
+	if (onToolCall) session.setToolCallObserver(onToolCall);
 
 	// Reject a malformed result before it reaches the reader, and say what is wrong with it
 	session.setResultValidator((result) => checkResultInvariants(input, result));
@@ -76,11 +79,12 @@ export async function runChunkedSession(
 	intermediateCallback: IntermediateCallback = defaultCallback,
 	initCallback: InitCallback = defaultCallback,
 	signal?: AbortSignal,
+	onToolCall?: ToolCallObserver,
 	concurrency = 3
 ): Promise<Result> {
 	const chunks = splitSentences(input);
 	if (chunks.length <= 1)
-		return runSingleSession(input, intermediateCallback, initCallback, signal);
+		return runSingleSession(input, intermediateCallback, initCallback, signal, onToolCall);
 
 	await initCallback?.();
 	const results = await mapWithLimit(
@@ -88,7 +92,13 @@ export async function runChunkedSession(
 		concurrency,
 		async (chunk) => {
 			try {
-				return await runSingleSession(chunk.text, intermediateCallback, undefined, signal);
+				return await runSingleSession(
+					chunk.text,
+					intermediateCallback,
+					undefined,
+					signal,
+					onToolCall
+				);
 			} catch (error: unknown) {
 				// an abort means nobody is listening anymore, so there is nothing to merge into
 				if (signal?.aborted) throw error;
@@ -110,9 +120,10 @@ export default async function runSession(
 	input: string,
 	intermediateCallback: IntermediateCallback = defaultCallback,
 	initCallback: InitCallback = defaultCallback,
-	signal?: AbortSignal
+	signal?: AbortSignal,
+	onToolCall?: ToolCallObserver
 ): Promise<Result> {
 	return process.env.PARALLEL_SENTENCES === 'on'
-		? runChunkedSession(input, intermediateCallback, initCallback, signal)
-		: runSingleSession(input, intermediateCallback, initCallback, signal);
+		? runChunkedSession(input, intermediateCallback, initCallback, signal, onToolCall)
+		: runSingleSession(input, intermediateCallback, initCallback, signal, onToolCall);
 }
