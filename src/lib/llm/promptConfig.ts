@@ -201,6 +201,10 @@ export const developerPrompt = [
 		 Thinking: two things look like evidence for leaving it alone and neither is. elvalasztas answers "lé-gi|-for-gal-mi", but it marks a seam in whatever you concatenate - "sóskifli", "csodaszép" and "papírzsebkendő" all come back with one and all three are wrong. It says where members would meet if the word existed, never that it does. And kulon_vagy_egybe asked about the fragment "légi forgalmi" answers "légiforgalmi", the opposite of what it says about the phrase the sentence actually contains. Ask it about the whole phrase, and prefer that answer to the fragment's.
 		 Parts: "A " (original), "légi forgalmi" (corrected), " társaság új járatot indít." (original)
 
+		 Input: "A portás útbaigazított minket."
+		 Tools: kulon_vagy_egybe on "útba igazított" answers from the general rule alone, "útbaigazított" unexplained. Only the szótári alak, "útba igazít", says what the 12th edition changed: "útbaigazít" is "Már nem érvényes írásmód" (AkH11-125b), "útba igazít" AkH12-106. Ask every candidate in its szótári alak: a verb without its jelek and ragok, as here.
+		 Parts: "A portás " (original), "útba igazított" (corrected), " minket." (original)
+
 		 Input: "tely"
 		 Tools: helyes-e_igy on "tely" -> "tej"
 		 Parts: "tej" (corrected)
