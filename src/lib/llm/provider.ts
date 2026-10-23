@@ -133,6 +133,11 @@ function readLimit(name: string, fallback: number) {
 	return read(name)?.toLowerCase() === 'off' ? undefined : readPositiveInt(name, fallback);
 }
 
+function readList(name: string) {
+	const rawList = read(name)?.split(',');
+	return rawList?.map((item) => item.trim()).filter(Boolean);
+}
+
 function resolveProviderId(): ProviderId {
 	const raw = read('LLM_PROVIDER')?.toLowerCase();
 
@@ -175,15 +180,14 @@ function resolveHeaders(id: ProviderId) {
 function getExtraBody(id: ProviderId): Record<string, unknown> | undefined {
 	if (id === 'openrouter') {
 		const prioritize = read('OPENROUTER_PRIORITIZE');
-		const only = read('OPENROUTER_ONLY')
-			?.split(',')
-			.map((name) => name.trim())
-			.filter(Boolean);
-		if (!prioritize && !only?.length) return undefined;
+		const only = readList('OPENROUTER_ONLY');
+		const quantizations = readList('OPENROUTER_QUANTIZATIONS');
+		if (!prioritize && !only?.length && !quantizations?.length) return undefined;
 		return {
 			provider: {
 				...(prioritize ? { sort: prioritize } : {}),
-				...(only?.length ? { only } : {})
+				...(only?.length ? { only } : {}),
+				...(quantizations?.length ? { quantizations } : {})
 			}
 		};
 	}
